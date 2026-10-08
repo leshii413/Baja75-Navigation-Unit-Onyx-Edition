@@ -969,6 +969,10 @@
 .txl-unlock .ul-row .txl-input { flex: 1 1 auto; letter-spacing: 0.15em; }
 .txl-unlock .txl-note { margin-top: 0.3em; }
 .txl-unlock .txl-note b { color: #fff; }
+/* v3.1.7: the sign-in screen (same layout as the unlock screen) */
+.txl-login .ul-row .txl-input { letter-spacing: 0.02em; }
+.txl-login .ul-row .txl-input.short { flex: 0 0 7em; }
+.txl-login .ul-opt { flex: 1 1 auto; text-align: left; }
 /* the Common Edition (off the Baja75 servers): no MARK or CHASE button; REC is there (2 courses, v3.1.1) */
 .txl[data-edition="common"] .txl-actions [data-act="mark"],
 .txl[data-edition="common"] .txl-actions [data-act="chase"] { display: none; }

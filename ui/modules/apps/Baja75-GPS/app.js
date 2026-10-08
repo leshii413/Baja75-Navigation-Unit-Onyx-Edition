@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.1.6';
+  var VERSION = '3.1.7';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -700,6 +700,7 @@
       '  <div class="txl-sheet" data-sheet="chase"></div>',
       '  <div class="txl-sheet" data-sheet="unlock"></div>',
       '  <div class="txl-sheet" data-sheet="notice"></div>',
+      '  <div class="txl-sheet" data-sheet="login"></div>',
       (ONYX ? '  <div class="txl-home"><div class="h-top"><div class="h-clock"></div><div class="h-date"></div></div><div class="h-tiles">' +
         [['music', 'Music', G.hMusic], ['video', 'Video', G.hVideo], ['maps', 'Maps', G.hMaps], ['settings', 'Settings', G.hSettings], ['gallery', 'Gallery', G.hGallery]].map(function (t) {
           return '<button class="h-tile" data-act="homeGo" data-v="' + t[0] + '"><i>' + t[2] + '</i><span>' + t[1] + '</span></button>';
@@ -729,7 +730,7 @@
       chaseBtn: q('[data-act="chase"]'), recBtn: q('[data-act="recToggle"]'), toast: q('.txl-toast'), banner: q('.txl-banner'),
       chips: q('.txl-chips'), pnbar: q('.txl-pnbar'), count: q('.txl-count'), result: q('.txl-result'), boot: q('.txl-boot'), raceBtn: q('[data-act="raceGo"]'),
       actions: q('.txl-actions'), media: q('.txl-media'), brandTag: q('.txl-brand b'), mbar: q('.txl-mbar'),
-      sheets: { menu: q('[data-sheet="menu"]'), mark: q('[data-sheet="mark"]'), chase: q('[data-sheet="chase"]'), unlock: q('[data-sheet="unlock"]'), notice: q('[data-sheet="notice"]') }
+      sheets: { menu: q('[data-sheet="menu"]'), mark: q('[data-sheet="mark"]'), chase: q('[data-sheet="chase"]'), unlock: q('[data-sheet="unlock"]'), notice: q('[data-sheet="notice"]'), login: q('[data-sheet="login"]') }
     };
     // stylesheet (legacy apps don't load app.css on their own in every game version)
     if (!document.getElementById('txl-css')) {
@@ -850,7 +851,7 @@
       self.s = loadSettings();
       self.lastHtml = {};
       self.worldKey = '';
-      self.menuTab = 'courses'; self.sel = null; self.renaming = null; self.armed = null;
+      self.menuTab = 'courses'; self.sel = null; self.renaming = null; self.armed = null; self.loginAsked = false;
       self.startBoot(true);
       if (self.s.sound && snd) { self.chimeUrl = snd; self.chimePending = true; }
       self.applySettings();
@@ -872,7 +873,7 @@
     if (!this.bootFull) {
       // the app was opened in a map that was already loaded: just until the map is there
       bar.style.width = Math.max(0, Math.min(100, age / 5000 * 100)).toFixed(1) + '%';
-      if ((ready && age > 1400) || age > 5000) { this.booting = false; clearInterval(this.bootTimer); this.el.boot.classList.remove('show'); if (ONYX) this.showHome(true); }
+      if ((ready && age > 1400) || age > 5000) { this.booting = false; clearInterval(this.bootTimer); this.el.boot.classList.remove('show'); if (ONYX) this.showHome(true); this.maybeLogin(); }
       return;
     }
     if (age < LOAD) {
@@ -895,6 +896,7 @@
       if (ONYX) this.showHome(true);
       clearInterval(this.bootTimer);
       this.el.boot.classList.remove('show');
+      this.maybeLogin();
     }
   };
   // the chime plays in the UI; if the page may not play audio yet, the game's own audio plays the same file
@@ -991,6 +993,7 @@
         if (full !== FULL) { FULL = full; if (EDITION !== 'full') this.editionChanged(); }
         this.licenseChanged();
         this.accessChanged();
+        this.maybeLogin();
         this.renderBanner();
         if (this.sheet === 'menu') this.renderSheet();
         break;
@@ -1042,6 +1045,8 @@
           this.save(); if (this.sheet === 'menu') this.renderSheet();
         }
         else if (d.kind === 'unlockPw') { this.unlockText = txt.slice(0, 40); this.act('unlockGo'); break; }
+        else if (d.kind === 'loginName') this.loginName = cleanDriver(txt, 40);
+        else if (d.kind === 'loginNum') this.loginNum = cleanDriver(txt, 8);
         else if (d.kind === 'videoUrl') { this.videoUrl = txt.slice(0, 500); if (this.m) this.m.url.value = this.videoUrl; this.videoPlay(this.videoUrl); }
         else if (d.kind === 'renameText') {
           this.renameText = txt.slice(0, 48);
@@ -1144,6 +1149,7 @@
       case EV + 'toast': if (d && d.text) this.toast(d.text, d.level); break;
       case EV + 'locked': if (d && d.what) this.guard(d.what === 'wpts' ? 'wpts' : String(d.what)); break;
       case EV + 'notice': if (d && d.text) { this.notice = d; this.openSheet('notice'); } break;
+      case EV + 'login': this.openLogin(d && d.what); break;
     }
   };
   // the game-side script answers requestState() with 'hello'; if it doesn't, say so on the screen
@@ -1178,6 +1184,8 @@
   // joined / left a Baja75 server, unlocked or locked again
   P.accessChanged = function () {
     var f = this.unlockFor;
+    var lg = this.login();
+    if (this.sheet === 'login' && (!lg || lg.on)) { this.loginFor = null; this.openSheet(null); }
     if (this.sheet === 'menu' && TAB_LOCK[this.menuTab] && !this.allowed(TAB_LOCK[this.menuTab])) { this.menuTab = 'courses'; this.renderSheet(); }
     if ((this.sheet === 'mark' && !this.allowed('mark')) || (this.sheet === 'chase' && !this.allowed('chase'))) this.openSheet(null);
     if (this.sheet === 'unlock' && f && this.allowed(f.what)) { // unlocked: on to what was asked for
@@ -1195,6 +1203,35 @@
       '<div class="txl-row ul-row"><input class="txl-input" type="password" data-in="unlockPw" data-enter="unlockGo" maxlength="40" placeholder="' + (COMMON ? 'License key' : 'Password or license key') + '" autocomplete="off" value="">' +
       kbd('unlockPw') + btn('unlockGo', 'UNLOCK', 'primary') + '</div>' +
       '<div class="txl-note">A personal-use unlocking license for your own BeamNG can be bought from <b>Baja75 on Patreon</b>. Or join a Baja75 server: everything is open there.</div>' +
+      '</div></div>';
+  };
+  // v3.1.7: sign in (the full unit / Adventure, Chase, Rally and Track Editions): a username on every recording and run.
+  // No password: it is only a name. On a BeamMP server with a real BeamMP name (not a Guest) the game script signs in by
+  // itself; offline, as a Guest or after leaving a server, recording and racing ask for this screen first.
+  P.login = function () { return (this.access && this.access.login) || null; };
+  P.maybeLogin = function () {
+    var l = this.login();
+    if (!l || l.on || this.loginAsked || this.booting || this.restarting || !this.hello) return;
+    if (this.sheet && this.sheet !== 'login') return; // not over something already open
+    this.loginAsked = true; // once per start (the power button starts again)
+    this.openLogin(null);
+  };
+  P.openLogin = function (what) {
+    this.loginFor = { what: what || null };
+    this.loginName = this.s.driverName || ''; this.loginNum = this.s.raceNumber || '';
+    this.openSheet('login');
+  };
+  P.loginHtml = function () {
+    var l = this.login() || {}, f = this.loginFor || {}, first = !this.s.driverName;
+    var why = f.what === 'record' ? 'Sign in to record a course' : f.what === 'race' ? 'Sign in to race' : first ? 'Welcome to the Baja75 Navigation Unit' : 'Sign in';
+    return head(first ? 'First time set up' : 'Sign in') + '<div class="txl-sheetbody"><div class="txl-unlock txl-login">' +
+      '<div class="ul-t">' + esc(why) + '</div>' +
+      '<div class="ul-s">Your username goes on every course you record and every timed run. It is only a name: no password.</div>' +
+      '<div class="txl-row ul-row"><input class="txl-input" type="text" data-in="loginName" data-enter="loginGo" maxlength="40" placeholder="Username" autocomplete="off" value="' + esc(this.loginName || '') + '">' + kbd('loginName') + '</div>' +
+      '<div class="txl-row ul-row"><input class="txl-input short" type="text" data-in="loginNum" data-enter="loginGo" maxlength="8" placeholder="Race #" autocomplete="off" value="' + esc(this.loginNum || '') + '">' + kbd('loginNum') + '<div class="t2 ul-opt">Race number (optional)</div></div>' +
+      '<div class="txl-btnrow">' + btn('loginGo', 'SIGN IN', 'primary') + btn('loginLater', 'LATER') + '</div>' +
+      '<div class="txl-note">' + (l.guest ? '<b>You joined this server as a Guest:</b> sign in with a username. ' : '') +
+      'On a BeamMP server you are signed in with your BeamMP name. Offline, or after leaving a server, sign in here to record or race.</div>' +
       '</div></div>';
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
@@ -1282,11 +1319,23 @@
       case 'relock': this.call('lockAgain'); break;
       case 'keyOpen': this.unlockFor = { what: null }; this.unlockText = ''; this.openSheet('unlock'); break;
       case 'noticeOk': this.notice = null; this.openSheet(null); break;
+      case 'loginGo': {
+        var lsh = this.el.sheets.login, lbox = lsh.querySelector('[data-in="loginName"]'), nbox = lsh.querySelector('[data-in="loginNum"]');
+        var lname = cleanDriver(lbox ? lbox.value : this.loginName, 40).replace(/\s+$/, ''), lnum = cleanDriver(nbox ? nbox.value : this.loginNum, 8).replace(/\s+$/, '');
+        if (!lname) { this.toast('Type a username to sign in', 'warning'); break; }
+        this.s.driverName = lname; this.s.raceNumber = lnum; this.save();
+        this.loginFor = null; this.openSheet(null);
+        this.call('signIn', luaStr(lname) + ', ' + luaStr(lnum)); // the game script signs in, then does what was asked for
+        break;
+      }
+      case 'loginLater': this.loginFor = null; this.call('loginCancel'); this.openSheet(null); break;
+      case 'loginOpen': this.openLogin(null); break;
+      case 'signOut': this.call('signOut'); break;
       case 'homeGo': this.homeGo(v); break;
       case 'nudgeClose': this.el.nudge.classList.remove('show'); break;
       case 'nudgeKey': this.el.nudge.classList.remove('show'); this.act('keyOpen'); break;
       case 'menu': this.openSheet('menu'); this.call('list'); break;
-      case 'close': this.openSheet(null); break;
+      case 'close': if (this.sheet === 'login') { this.loginFor = null; this.call('loginCancel'); } this.openSheet(null); break;
       case 'runOpen': this.runOpen = this.runOpen === v ? null : v; this.renderSheet(); break;
       case 'tab':
         if (TAB_LOCK[v] && !this.guard(TAB_LOCK[v], function () { this.openSheet('menu'); this.act('tab', { getAttribute: function () { return v; } }); })) break;
@@ -1513,8 +1562,8 @@
       case 'resetTrip': this.call('resetTrip'); this.toast('Trip and max speed reset', 'info'); break;
       case 'kbd': {
         var box = el && el.parentNode ? el.parentNode.querySelector('[data-in="' + v + '"]') : null;
-        var cur = v === 'unlockPw' ? '' : box ? box.value : v === 'markLabel' ? this.s.markLabel : v === 'recName' ? this.recName : v === 'videoUrl' ? this.videoUrl : v === 'videoPage' ? this.s.videoPage : v === 'driverName' ? this.s.driverName : v === 'raceNumber' ? this.s.raceNumber : this.renameText;
-        var title = v === 'unlockPw' ? 'Password' : v === 'markLabel' ? 'Waypoint name' : v === 'recName' ? 'New course name' : v === 'videoUrl' ? 'YouTube link' : v === 'videoPage' ? 'Your video page address' : v === 'driverName' ? 'Driver name' : v === 'raceNumber' ? 'Race number' : 'Rename course';
+        var cur = v === 'unlockPw' ? '' : box ? box.value : v === 'markLabel' ? this.s.markLabel : v === 'recName' ? this.recName : v === 'videoUrl' ? this.videoUrl : v === 'videoPage' ? this.s.videoPage : v === 'driverName' ? this.s.driverName : v === 'raceNumber' ? this.s.raceNumber : v === 'loginName' ? this.loginName : v === 'loginNum' ? this.loginNum : this.renameText;
+        var title = v === 'unlockPw' ? 'Password' : v === 'markLabel' ? 'Waypoint name' : v === 'recName' ? 'New course name' : v === 'videoUrl' ? 'YouTube link' : v === 'videoPage' ? 'Your video page address' : v === 'driverName' ? 'Driver name' : v === 'raceNumber' ? 'Race number' : v === 'loginName' ? 'Username' : v === 'loginNum' ? 'Race number' : 'Rename course';
         if (!this.hello) { this.toast('The game-side script isn\u2019t answering - see the red banner', 'error'); break; }
         this.releaseInput();
         this.call('promptText', luaStr(v) + ', ' + luaStr(title) + ', ' + luaStr(cur || ''));
@@ -1533,6 +1582,8 @@
     else if (k === 'renameText') this.renameText = String(t.value || '').slice(0, 48);
     else if (k === 'videoUrl') this.videoUrl = String(t.value || '').slice(0, 500);
     else if (k === 'unlockPw') this.unlockText = String(t.value || '').slice(0, 40);
+    else if (k === 'loginName') this.loginName = String(t.value || '').slice(0, 40);
+    else if (k === 'loginNum') this.loginNum = String(t.value || '').slice(0, 8);
     else if (k === 'videoPage') {
       var vp = String(t.value || '').trim().slice(0, 300);
       if (committed && isYouTubeAddress(vp)) { // a video link: play it, and keep this box for page addresses
@@ -2153,7 +2204,7 @@
   P.renderSheet = function () {
     if (!this.sheet) return;
     var el = this.el.sheets[this.sheet];
-    var html = this.sheet === 'menu' ? this.menuHtml() : this.sheet === 'mark' ? this.markHtml() : this.sheet === 'unlock' ? this.unlockHtml() : this.sheet === 'notice' ? this.noticeHtml() : this.chaseHtml();
+    var html = this.sheet === 'menu' ? this.menuHtml() : this.sheet === 'mark' ? this.markHtml() : this.sheet === 'unlock' ? this.unlockHtml() : this.sheet === 'notice' ? this.noticeHtml() : this.sheet === 'login' ? this.loginHtml() : this.chaseHtml();
     // keep typing focus/caret if an input is being edited
     var active = document.activeElement, focusKey = active && el.contains(active) ? active.getAttribute('data-in') : null;
     var caret = focusKey ? active.selectionStart : null;
@@ -2326,10 +2377,11 @@
           (isCommon() ? '' : btn('exportGpx', 'Export GPX') + (ONYX ? '' : btn('serverPack', 'Server pack'))) +
           (!readOnlySrc(src) ? btn('delCourse', armed ? 'Confirm delete' : G.trash, 'danger' + (armed ? ' armed' : '')) : '') + '</div>';
         // notes, picture and times (from the course's .notes.txt / .png / .jpg and your race times)
-        if (info && (info.notes || info.image || typeof info.best === 'number' || info.pacenotes > 0)) {
+        if (info && (info.notes || info.image || typeof info.best === 'number' || info.pacenotes > 0 || info.author)) {
           var last = info.last && typeof info.last.t === 'number' ? 'Last ' + fmtRace(info.last.t) + (info.last.date ? ' (' + info.last.date + ')' : '') : '';
           html += '<div class="txl-cinfo">' + (info.image ? '<img src="' + esc(String(info.image).charAt(0) === '/' ? info.image : '/' + info.image) + '">' : '') +
             '<div class="ctxt">' + (typeof info.best === 'number' ? '<div class="times">Best <b>' + esc(fmtRace(info.best)) + '</b>' + (info.runs ? ' \u00b7 ' + info.runs + ' run' + (info.runs === 1 ? '' : 's') : '') + (last ? ' \u00b7 ' + esc(last) : '') + '</div>' : '') +
+            (info.author ? '<div class="times">Recorded by <b>' + esc(info.author) + '</b></div>' : '') +
             (info.pacenotes > 0 ? '<div class="times">Pacenotes <b>' + info.pacenotes + '</b>' + (info.autoPacenotes ? ' \u00b7 ' + info.autoPacenotes + ' auto' : '') + '</div>' : '') +
             (info.notes ? '<div class="notes">' + esc(info.notes) + '</div>' : '') + '</div></div>';
         }
@@ -2344,11 +2396,14 @@
 
   // MENU > Times: every timed run from race_log.txt (newest first), with its warnings
   P.timesHtml = function () {
-    var log = this.runLog || {}, list = arr(log.entries);
+    var log = this.runLog || {}, list = arr(log.entries), lg = this.login();
     var where = '<div class="txl-pathrow"><div class="grow"><div class="t2">Run log (a small text file, all maps)</div><div class="t1 mono path">' +
       esc(log.real || log.path || 'settings/TreadXLGPS/race_log.txt') + '</div></div>' + btn('openFolder', G.folder + '<span>Open folder</span>', 'iconbtn', 'log') + '</div>' +
       '<div class="txl-sec"><h3>Driver for race results</h3>' +
-      '<div class="txl-row"><div class="grow"><div class="t1">Driver name</div><div class="t2">Saved with every run' + (this.s.driverName ? '' : ' (blank: BeamMP name)') + '</div></div><input class="txl-input" type="text" data-in="driverName" maxlength="40" placeholder="Driver" value="' + esc(this.s.driverName || '') + '">' + kbd('driverName') + '</div>' +
+      (lg ? '<div class="txl-row"><div class="grow"><div class="t1">' + (lg.on ? 'Signed in as <b>' + esc(lg.name || '') + '</b>' : 'Not signed in') + '</div><div class="t2">' +
+        (lg.via === 'beammp' ? 'Your BeamMP name, while on this server' : lg.on ? 'Saved with every recording and run' : 'Sign in to record or race') + '</div></div>' +
+        (lg.via === 'beammp' ? '' : lg.on ? btn('loginOpen', 'Change') + btn('signOut', 'Sign out') : btn('loginOpen', 'Sign in', 'primary')) + '</div>' :
+      '<div class="txl-row"><div class="grow"><div class="t1">Driver name</div><div class="t2">Saved with every run' + (this.s.driverName ? '' : ' (blank: BeamMP name)') + '</div></div><input class="txl-input" type="text" data-in="driverName" maxlength="40" placeholder="Driver" value="' + esc(this.s.driverName || '') + '">' + kbd('driverName') + '</div>') +
       '<div class="txl-row"><div class="grow"><div class="t1">Race number</div></div><input class="txl-input short" type="text" data-in="raceNumber" maxlength="8" placeholder="#" value="' + esc(this.s.raceNumber || '') + '">' + kbd('raceNumber') + '</div>' +
       '<div class="txl-row"><div class="grow"><div class="t1">Export for scoring</div><div class="t2">A copy of your run log for the race organizer (exports folder)</div></div>' + btn('exportRunLog', 'Export', 'blue') + '</div></div>';
     if (!list.length) {
@@ -3781,7 +3836,7 @@
 
   // ---------------------------------------------------------------- Angular glue
   var HOOKS = [EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
-    EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice'];
+    EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login'];
   TreadXLApp.HOOKS = HOOKS;
 
   if (window.angular && angular.module) {

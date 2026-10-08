@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.1.6'
+local VERSION = '3.1.7'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -659,7 +659,7 @@ local function readCourseFiles(dir, name)
   return pts, wpts, data
 end
 
-local function saveCourseFiles(dir, name, pts, wpts)
+local function saveCourseFiles(dir, name, pts, wpts, author) -- author: who recorded it (v3.1.7; kept on renames, copies, packs)
   local arr = {}
   for i, p in ipairs(pts) do
     local x, y = tonumber(p.x or p[1]), tonumber(p.y or p[2])
@@ -670,6 +670,7 @@ local function saveCourseFiles(dir, name, pts, wpts)
   local cp, wp = coursePath(dir, name), wptPath(dir, name)
   local okC = writeJson(cp, {
     format = 'TreadXLGPS-2', name = name, map = levelId(), created = os.time(), length = r2(length), pts = arr,
+    author = (type(author) == 'string' and author ~= '') and author or nil,
   }, false)
   local okW = writeJson(wp, wptsForFile(wpts), true)
   -- trust the disk, not the call: the file has to be there afterwards
@@ -1153,7 +1154,7 @@ local function stopRecording(discard)
     sendWpts()
     return
   end
-  local saved, path = saveCourseFiles(myDir(), r.name, r.pts, r.wpts)
+  local saved, path = saveCourseFiles(myDir(), r.name, r.pts, r.wpts, M._who and M._who() or nil)
   if saved then
     toast('Saved "' .. r.name .. '" to ' .. path:sub(2), 'success')
     loadCourse(r.name, 'mine')
@@ -1863,6 +1864,9 @@ end
 RunLog.name, RunLog.number = '', ''
 function RunLog.clean(v, n) return trim(tostring(v or ''):gsub('[|\r\n%c]', ' '):gsub('%s+', ' ')):sub(1, n) end
 function RunLog.driverName()
+  if race and race.driver then return race.driver end -- who started this run (a dropped connection doesn't change it)
+  local L = M._lock and M._lock.LOGIN
+  if L and L.applies() then return (L.current()) or RunLog.name end -- v3.1.7: the signed-in name (BeamMP name first)
   if RunLog.name ~= '' then return RunLog.name end
   local nick = ''
   pcall(function() if type(MPConfig) == 'table' and type(MPConfig.getNickname) == 'function' then nick = MPConfig.getNickname() end end)
@@ -1882,6 +1886,7 @@ end
 function M.setDriver(name, number)
   RunLog.name, RunLog.number = RunLog.clean(name, 40), RunLog.clean(number, 8)
 end
+function M._who() return RunLog.driverName() end -- who is recording (saved with the course, v3.1.7)
 
 -- v3.1.6: on a BeamMP server, the Adventure (full), Rally, Track and Chase Editions also send each run to the server's
 -- results collector (Resources/Server/Baja75Results). The server keeps it only when the course is one of its own (same map,
@@ -2058,6 +2063,8 @@ local function raceGo()
   race.state, race.t0, race.splits, race.prevS, race.prevT = 'running', raceClock, {}, nil, nil
   race.counts, race.active = { jump = race.jumps or 0, reset = 0, recover = 0 }, {}
   race.segs, race.seg = {}, nil
+  race.driver = nil
+  race.driver = RunLog.driverName()
   Dmg.start()
   raceCall('countdowngo', 'event:UI_CountdownGo')
 end
@@ -2445,9 +2452,11 @@ function M.courseInfo(name, source)
   for _, w in ipairs(readJson(wptPath(dir, name)) or {}) do
     if type(w) == 'table' and w.icon == PNK.ICON then pn = pn + 1; if w.auto then auto = auto + 1 end end
   end
+  local cdata = readJson(coursePath(dir, name))
   trigger('courseInfo', {
     name = name, source = src, notes = readNotes(dir, name), image = findPicture(dir, name),
     best = times.best, runs = #times.runs, last = times.runs[1], pacenotes = pn, autoPacenotes = auto,
+    author = type(cdata) == 'table' and type(cdata.author) == 'string' and cdata.author or nil, -- who recorded it (v3.1.7)
   })
 end
 
@@ -2505,9 +2514,9 @@ function M.renameCourse(name, source, newName)
   if not dir then toast('Course not found: ' .. name, 'warning'); return end
   if newName == name and src == 'mine' then return end
   if fileExists(coursePath(myDir(), newName)) then toast('"' .. newName .. '" already exists', 'warning'); return end
-  local pts, wpts = readCourseFiles(dir, name)
+  local pts, wpts, cdata = readCourseFiles(dir, name)
   local tmp = buildCourse(newName, pts, wpts)
-  if not saveCourseFiles(myDir(), newName, tmp.pts, tmp.wpts) then toast('Could not rename', 'error'); return end
+  if not saveCourseFiles(myDir(), newName, tmp.pts, tmp.wpts, cdata.author) then toast('Could not rename', 'error'); return end
   removeFile(coursePath(dir, name))
   removeFile(wptPath(dir, name))
   toast('Renamed to "' .. newName .. '"', 'success')
@@ -2519,10 +2528,10 @@ function M.copyCourse(name, source)
   name = safeName(name)
   local dir, src = findCourse(name, source)
   if not dir then toast('Course not found: ' .. name, 'warning'); return end
-  local pts, wpts = readCourseFiles(dir, name)
+  local pts, wpts, cdata = readCourseFiles(dir, name)
   local tmp = buildCourse(name, pts, wpts)
   local newName = uniqueName(src == 'mine' and (name .. '_copy') or name)
-  if saveCourseFiles(myDir(), newName, tmp.pts, tmp.wpts) then
+  if saveCourseFiles(myDir(), newName, tmp.pts, tmp.wpts, cdata.author) then
     toast('Saved a copy as "' .. newName .. '"', 'success')
     if isLoaded(name, src) then loadCourse(newName, 'mine') else sendList() end
   else
@@ -2751,10 +2760,10 @@ function M.addToServerPack(name, source)
   name = safeName(name)
   local dir = findCourse(name, source)
   if not dir then toast('Course not found: ' .. name, 'warning'); return end
-  local pts, wpts = readCourseFiles(dir, name)
+  local pts, wpts, cdata = readCourseFiles(dir, name)
   local tmp = buildCourse(name, pts, wpts)
   local dest = PACK .. SERVER .. '/' .. levelId()
-  if not saveCourseFiles(dest, name, tmp.pts, tmp.wpts) then toast('Could not write the server pack', 'error'); return end
+  if not saveCourseFiles(dest, name, tmp.pts, tmp.wpts, cdata.author) then toast('Could not write the server pack', 'error'); return end
   -- notes and picture travel with the course; a notes file is started for you if the course has none
   local notes = readText(dir .. '/' .. name .. '.notes.txt')
   local notesDst = dest .. '/' .. name .. '.notes.txt'
@@ -3657,7 +3666,9 @@ function M.onSerialize()
   return { trip = trip, maxSpeed = maxSpeed, course = course and course.name or nil, courseSource = course and course.source or nil,
     chaseInterval = chase.interval, markDefaults = markDefaults, pnOpts = pnOpts, offCourseAlert = offCourseAlert, soundOn = soundOn,
     damageLog = Dmg.on, unlocked = M._lock and M._lock.password or nil,
-    adminEnd = M._lock and M._lock.LIC.adminEnd or nil, adminUsed = M._lock and M._lock.LIC.adminUsed or nil }
+    adminEnd = M._lock and M._lock.LIC.adminEnd or nil, adminUsed = M._lock and M._lock.LIC.adminUsed or nil,
+    login = M._lock and M._lock.LOGIN.on or nil, loginMp = M._lock and M._lock.LOGIN.prevMp or nil,
+    driver = RunLog.name, number = RunLog.number }
 end
 
 function M.onDeserialized(data)
@@ -3672,6 +3683,8 @@ function M.onDeserialized(data)
   if data.damageLog ~= nil then Dmg.on = data.damageLog == true end
   if data.unlocked == true and M._lock then M._lock.password = true end -- a Lua reload keeps the password unlock
   if M._lock then M._lock.LIC.adminEnd = tonumber(data.adminEnd); M._lock.LIC.adminUsed = data.adminUsed == true end -- ...and the admin hour (once per game start)
+  if type(data.driver) == 'string' then M.setDriver(data.driver, data.number) end -- the driver name / race number (the screen doesn't send them again)
+  if M._lock and data.login == true then M._lock.LOGIN.on = true; M._lock.LOGIN.prevMp = data.loginMp == true end -- ...and the sign-in (signed out if that reload was leaving a server)
   if type(data.course) == 'string' then pcall(loadCourse, data.course, data.courseSource) end
 end
 
@@ -3761,6 +3774,7 @@ function LOCK.check(force)
   local on = LOCK.isBaja(addr, name)
   local was = LOCK.server
   LOCK.server, LOCK.at = on, addr
+  if LOCK.LOGIN then pcall(LOCK.LOGIN.watch) end -- signed in? (left a BeamMP session = signed out)
   if was ~= on then
     log_('I', on and ('Baja75 server ' .. tostring(addr) .. ' (' .. tostring(name) .. '): every feature open')
       or ('not on a Baja75 server (' .. tostring(addr or 'single player') .. '): ' .. PNK.EDITION .. ' edition limits'))
@@ -3781,7 +3795,7 @@ function LOCK.state()
   local on = LOCK.check()
   return { server = on, password = LOCK.password or nil, unlocked = LOCK.unlocked() or nil, ed = PNK.ed(), lic = LOCK.LIC.ui(),
     admin = LOCK.LIC.adminOn() and (LOCK.LIC.adminEnd - os.time()) or nil, mp = LOCK.at ~= nil or nil, courses = LOCK.limited() and LOCK.courseCount() or nil,
-    maxCourses = LOCK.limited() and LOCK.maxCourses() or nil } -- (the addresses stay in here: never shown)
+    maxCourses = LOCK.limited() and LOCK.maxCourses() or nil, login = LOCK.LOGIN and LOCK.LOGIN.ui() or nil } -- (the addresses stay in here: never shown)
 end
 
 -- the password is checked against its digest (salted FNV-1a with murmur3's final mix, 64 rounds; the text isn't kept
@@ -4052,7 +4066,107 @@ function LOCK.install()
   end
 end
 
+-- ---------------------------------------------------------------- sign in (v3.1.7)
+-- The full unit (Adventure Edition) and the Chase, Rally and Track Editions put a username on every recording and run.
+-- No security: it is only a name. On a BeamMP server with a real BeamMP name (not a Guest) that name is used, signed in
+-- by itself. Offline, as a Guest, or after leaving / losing the server: the player signs in (types a username) before
+-- recording or racing; the sign-in lasts until the game closes or the player leaves a BeamMP session.
+-- The username itself is kept by the screen (its settings, like the race number) and sent with setDriver / signIn.
+local LOGIN = {
+  EDITIONS = { full = true, chase = true, rally = true, track = true },
+  on = false,       -- signed in by hand this session (the name is the driver name, RunLog.name)
+  prevMp = nil,     -- on a BeamMP session at the last look (true / false; nil = not looked yet)
+  pending = nil,    -- what was asked for before signing in: done right after
+  lastKey = nil,    -- what the screen was last told
+}
+function LOGIN.applies() return LOGIN.EDITIONS[PNK.EDITION] == true end
+function LOGIN.inMp()
+  local ok, on = pcall(function() return MPCoreNetwork.isMPSession() end)
+  return ok and on == true
+end
+-- the BeamMP name, when on a BeamMP session and not a Guest
+function LOGIN.mpName()
+  if not LOGIN.inMp() then return nil end
+  local nick = ''
+  pcall(function() nick = MPConfig.getNickname() end)
+  nick = RunLog.clean(nick, 40)
+  if nick == '' or nick:lower():find('guest', 1, true) then return nil end
+  return nick
+end
+-- who is signed in: name, how ('beammp' / 'manual'), or nil
+function LOGIN.current()
+  local mp = LOGIN.mpName()
+  if mp then return mp, 'beammp' end
+  if LOGIN.on and RunLog.name ~= '' then return RunLog.name, 'manual' end
+  return nil
+end
+function LOGIN.signedIn() return not LOGIN.applies() or LOGIN.current() ~= nil end
+-- for the hello
+function LOGIN.ui()
+  if not LOGIN.applies() then return nil end
+  local name, via = LOGIN.current()
+  return { on = name ~= nil, name = name, via = via, mp = LOGIN.inMp() or nil, guest = (LOGIN.inMp() and not via) or nil }
+end
+-- once a second (from LOCK.check): leaving a BeamMP session signs out; any change tells the screen
+function LOGIN.watch()
+  if not LOGIN.applies() then return end
+  local mp = LOGIN.inMp()
+  if LOGIN.prevMp == true and not mp and LOGIN.on then
+    LOGIN.on = false
+    log_('I', 'left the BeamMP session: signed out')
+  end
+  LOGIN.prevMp = mp
+  local name, via = LOGIN.current()
+  local key = tostring(name) .. '|' .. tostring(via) .. '|' .. tostring(mp)
+  if LOGIN.lastKey ~= nil and key ~= LOGIN.lastKey then sendHello(false) end
+  LOGIN.lastKey = key
+end
+-- ask the screen for a sign-in; what was asked for runs once signed in
+function LOGIN.ask(what, fn)
+  LOGIN.pending = fn
+  trigger('login', { what = what })
+end
+function LOGIN.guard(what, fn)
+  return function(...)
+    if LOGIN.signedIn() then return fn(...) end
+    local args, n = { ... }, select('#', ...)
+    LOGIN.ask(what, function() return fn(unpack(args, 1, n)) end)
+  end
+end
+-- the screen signs in with a username (and the race number)
+M.signIn = function(name, number)
+  if not LOGIN.applies() then return end
+  name = RunLog.clean(name, 40)
+  if name == '' then toast('Type a username to sign in', 'warning'); return end
+  M.setDriver(name, number)
+  LOGIN.on = true
+  local mp, via = LOGIN.current()
+  toast('Signed in as ' .. mp .. (via == 'beammp' and ' (your BeamMP name)' or ''), 'success')
+  LOGIN.lastKey = nil
+  LOGIN.watch()
+  sendHello(false)
+  local fn = LOGIN.pending
+  LOGIN.pending = nil
+  if fn then fn() end
+end
+M.signOut = function()
+  if not LOGIN.applies() then return end
+  LOGIN.on, LOGIN.pending = false, nil
+  if LOGIN.mpName() then toast('On this server you are signed in with your BeamMP name', 'info') end
+  sendHello(false)
+end
+M.loginCancel = function() LOGIN.pending = nil end
+function LOGIN.install()
+  M.raceRoute = LOGIN.guard('race', M.raceRoute)
+  M.raceStart = LOGIN.guard('race', M.raceStart)
+  M.startRecording = LOGIN.guard('record', M.startRecording)
+  local toggle = M.actionRecord
+  M.actionRecord = function(...) if rec then return toggle(...) end return LOGIN.guard('record', toggle)(...) end -- stopping always works
+end
+LOCK.LOGIN = LOGIN
+
 LOCK.install()
+LOGIN.install()
 M._lock = LOCK
 end)() end
 

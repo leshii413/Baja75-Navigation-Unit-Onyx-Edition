@@ -36,6 +36,8 @@ your driver name and race number, the exact time in ms, VCPs, session and a run 
 MENU > Times > Export for scoring saves a copy named after you (settings/TreadXLGPS/exports) for the race organizer.
 On a BeamMP server with the Baja75 results collector (Adventure, Rally, Track and Chase Editions), runs on the
 server's courses are also sent to the server automatically ("Result sent to the server").
+Sign in (Adventure, Chase, Rally, Track Editions): your username goes on every recording and timed run (no password).
+On a BeamMP server your BeamMP name is used (not as a Guest); offline or after leaving a server, sign in to record or race.
 Baja75 Navigation Unit Alerts: a second HUD app with big flashing Wrong Way / Off Course / Slow Down warnings - place it anywhere.
 Rally pacenotes: MARK > Rally pacenote (or Auto pacenotes from the course line) - BeamNG's own pacenote tiles and
 co-driver voices read the notes ahead of each corner while you drive a saved route. Off course warns from 15 m.
