@@ -8,15 +8,24 @@ As the Baja75 owner, I wanted a method for racers to complete a race on and offl
 
 A rugged 10″ off-road race navigator for BeamNG.drive and BeamMP, in the Baja75 Navigation Unit case: orange corner guards, the Baja75 logo on the bezel.
 
-![Race mode preview](dev/preview/out/race.png)
+## Baja75 Navigation Unit - Onyx Edition
 
-## Seven editions
+Road and overland exploration in metallic black.
 
-One code base, seven zips (`python3 dev/package.py` builds them). Install **one** of them: they replace each other.
+![Home screen](previews/onyx_home.png)
+
+| Mark hazards and turns | Music | Your own videos | Routes |
+|---|---|---|---|
+| ![Mark hazards and turns](previews/onyx_mark.png) | ![Music](previews/onyx_music.png) | ![Your own videos](previews/onyx_video.png) | ![Routes](previews/onyx_menu.png) |
+
+## Eight editions
+
+One code base, eight zips (`python3 dev/package.py` builds them). Install **one** of them: they replace each other.
 
 | Zip | In the HUD app list | What it has |
 |---|---|---|
 | `Baja75-NavigationUnit-v….zip` | **Baja75 Navigation Unit** | All four modes: Chase, Adventure, Rally, Track. Made for the Baja75 BeamMP servers: see *Baja75 servers and the password* below |
+| `Baja75-NavigationUnit-AdventureEdition-v….zip` | **Baja75 Navigation Unit - Adventure Edition** | The same unit as the one above (all four modes), under the Adventure Edition name |
 | `Baja75-NavigationUnit-ChaseEdition-v….zip` | **Baja75 Navigation Unit - Chase Edition** | Chase mode only. Waypoints are **pits, start / finish, VCPs and speed zone start / end** only: no pacenotes, no direction calls or extras (shown or read out), no danger / hazard / rock / tree / note markers. A course made in the full GPS still loads: its other waypoints stay in the file, just not on this screen |
 | `Baja75-NavigationUnit-RallyEdition-v….zip` | **Baja75 Navigation Unit - Rally Edition** | Rally mode only: full co-driver calls, rally pacenotes, the music bar |
 | `Baja75-NavigationUnit-TrackEdition-v….zip` | **Baja75 Navigation Unit - Track Edition** | Track mode only: the gauge panel, telemetry fields, split screen and lap racing. Recording asks for the password or a license off the servers |
@@ -135,6 +144,7 @@ Drive back to the start (or TO START) to race it again. A plain *Load* or *Unloa
 - The file keeps the last 500 runs.
 - **For race scoring** (from v3.1.5): *Driver* (MENU → Times → *Driver name*, or your BeamMP name when that's blank) and *Number* (*Race number*), *Time ms* (the exact time in milliseconds; the shown time is cut to tenths), *VCPs* (cleared / total), *Session* (Single player, BeamMP or Baja75 server), *Unit* (the version) and a *Run ID* for that run. Older lines without them still read fine.
 - **Export for scoring** (MENU → Times): saves a copy of the run log as `settings/TreadXLGPS/exports/Baja75_results_<driver>_<number>_<date>.txt` and opens the folder. Send that file to the race organizer: the **Baja75 Scoring Management System** reads it.
+- **Server results** (Adventure, Rally, Track and Chase Editions, v3.1.6): on a BeamMP server that runs the Baja75 results collector, every timed run on one of the server's courses (same map, name and route length) is also sent to the server when it ends, finished or DNF. The unit says *Result sent to the server*. Your own run log is kept as before. Server owners: see `Baja75-NavigationUnit-ServerResults` (a separate zip for `Resources/Server`).
 
 ### Rally pacenotes
 

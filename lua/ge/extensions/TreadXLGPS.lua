@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.1.5'
+local VERSION = '3.1.6'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -1883,6 +1883,37 @@ function M.setDriver(name, number)
   RunLog.name, RunLog.number = RunLog.clean(name, 40), RunLog.clean(number, 8)
 end
 
+-- v3.1.6: on a BeamMP server, the Adventure (full), Rally, Track and Chase Editions also send each run to the server's
+-- results collector (Resources/Server/Baja75Results). The server keeps it only when the course is one of its own (same map,
+-- name and route length) and answers; servers without the collector never answer, and nothing is shown.
+RunLog.SEND = { full = true, rally = true, track = true, chase = true }
+RunLog.ACK = {
+  saved = { 'success', 'Result sent to the server: %s' },
+  not_server_course = { 'info', '%s is not one of this server\'s courses: the result stays on your unit' },
+  write = { 'warning', 'The server could not save your result for %s: send your run log (MENU > Times > Export)' },
+  bad = { 'warning', 'The server did not accept your result for %s: send your run log (MENU > Times > Export)' },
+  busy = { 'warning', 'The server did not take your result for %s (too soon after the last one): send your run log' },
+}
+function RunLog.onAck(data)
+  local ok, t = pcall(jsonDecode, data)
+  if not ok or type(t) ~= 'table' then return end
+  local a = RunLog.ACK[tostring(t.why)]
+  if not a then return end -- 'duplicate': already there
+  local name = RunLog.clean(t.course, 60)
+  toast(string.format(a[2], name ~= '' and name or 'this run'), a[1])
+end
+function RunLog.toServer(run)
+  if not RunLog.SEND[PNK.EDITION] or type(TriggerServerEvent) ~= 'function' or type(jsonEncode) ~= 'function' then return false end
+  local ok, mp = pcall(function() return MPCoreNetwork.isMPSession() end)
+  if not (ok and mp) then return false end
+  if not (race and course and course.name == race.name and (course.length or 0) > 0) then return false end
+  if type(AddEventHandler) == 'function' then pcall(AddEventHandler, 'Baja75Results_ack', RunLog.onAck, 'TreadXLGPS_results') end
+  local msg = { v = 1, ed = PNK.EDITION, unit = VERSION, map = levelId(), course = race.name, length = r2(course.length), lines = run }
+  local sent = pcall(function() TriggerServerEvent('Baja75Results_run', jsonEncode(msg)) end)
+  if not sent then log_('W', 'could not send the run to the server') end
+  return sent
+end
+
 -- an off-course moment still open when the run ends lasts until then
 function RunLog.closeSeg(t)
   if race and race.seg then race.seg.dur = math.max(0, t - race.seg.t); race.seg = nil end
@@ -1950,6 +1981,7 @@ function RunLog.write(finished, t)
   local lines = {}
   for _, r in ipairs(runs) do for _, l in ipairs(r) do lines[#lines + 1] = l end end
   if not writeText(RunLog.FILE, table.concat(lines, '\n') .. '\n') then log_('E', 'could not write ' .. RunLog.FILE) end
+  RunLog.toServer(run)
 end
 
 -- warnings counted once each time they come on during a run; each OFF COURSE opens an off-course moment that lasts
