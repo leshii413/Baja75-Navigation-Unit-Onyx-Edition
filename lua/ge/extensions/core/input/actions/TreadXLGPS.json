@@ -1,0 +1,173 @@
+{
+  "TreadXLGPS_record": {
+    "cat": "gameplay",
+    "order": 810,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionRecord() end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Start / stop recording",
+    "desc": "Starts recording a new course, or stops and saves the current one"
+  },
+  "TreadXLGPS_mark": {
+    "cat": "gameplay",
+    "order": 811,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMark() end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Mark waypoint",
+    "desc": "Drops a waypoint at your position using the last symbol picked on the GPS"
+  },
+  "TreadXLGPS_chaseNext": {
+    "cat": "gameplay",
+    "order": 812,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionChaseNext() end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Chase next vehicle",
+    "desc": "Tracks the next-nearest vehicle in Chase mode (cycles back to off)"
+  },
+  "TreadXLGPS_zoomIn": {
+    "cat": "gameplay",
+    "order": 813,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionZoom(1) end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Zoom in",
+    "desc": "Zooms the GPS map in"
+  },
+  "TreadXLGPS_zoomOut": {
+    "cat": "gameplay",
+    "order": 814,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionZoom(-1) end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Zoom out",
+    "desc": "Zooms the GPS map out"
+  },
+  "TreadXLGPS_orientation": {
+    "cat": "gameplay",
+    "order": 815,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionOrientation() end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Track up / North up",
+    "desc": "Switches the GPS map between track-up and north-up"
+  },
+  "TreadXLGPS_button1": {
+    "cat": "gameplay",
+    "order": 816,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(1) end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Button 1 (Mode)",
+    "desc": "Switches the GPS mode: Chase, Rally, Tuner, Adventure"
+  },
+  "TreadXLGPS_button2": {
+    "cat": "gameplay",
+    "order": 817,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(2) end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Button 2 (Display)",
+    "desc": "Switches what the GPS screen shows: the map, the video player or the music player"
+  },
+  "TreadXLGPS_button3": {
+    "cat": "gameplay",
+    "order": 818,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(3) end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Button 3 (not used yet)",
+    "desc": "The GPS's button 3 - reserved for a future update"
+  },
+  "TreadXLGPS_button4": {
+    "cat": "gameplay",
+    "order": 819,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(4) end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Button 4 (not used yet)",
+    "desc": "The GPS's button 4 - reserved for a future update"
+  },
+  "TreadXLGPS_button5": {
+    "cat": "gameplay",
+    "order": 820,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(5) end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Button 5 (not used yet)",
+    "desc": "The GPS's button 5 - reserved for a future update"
+  },
+  "TreadXLGPS_mediaVolUp": {
+    "cat": "gameplay",
+    "order": 821,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMedia(\"volUp\") end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Media volume up",
+    "desc": "Raises the GPS video / music volume"
+  },
+  "TreadXLGPS_mediaVolDown": {
+    "cat": "gameplay",
+    "order": 822,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMedia(\"volDown\") end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Media volume down",
+    "desc": "Lowers the GPS video / music volume"
+  },
+  "TreadXLGPS_mediaMute": {
+    "cat": "gameplay",
+    "order": 823,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMedia(\"mute\") end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Media mute",
+    "desc": "Mutes or unmutes the GPS video / music"
+  },
+  "TreadXLGPS_mediaPlayPause": {
+    "cat": "gameplay",
+    "order": 824,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMedia(\"playPause\") end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Media play / pause",
+    "desc": "Plays or pauses the GPS video / music"
+  },
+  "TreadXLGPS_mediaNext": {
+    "cat": "gameplay",
+    "order": 825,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMedia(\"next\") end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Media next",
+    "desc": "Next song (music) or forward 10 s (video)"
+  },
+  "TreadXLGPS_mediaPrev": {
+    "cat": "gameplay",
+    "order": 826,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMedia(\"prev\") end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Media previous",
+    "desc": "Previous song (music) or back 10 s (video)"
+  },
+  "TreadXLGPS_mediaSplit": {
+    "cat": "gameplay",
+    "order": 827,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMedia(\"split\") end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Split screen",
+    "desc": "Turns the GPS split screen (map + video / music) on or off"
+  },
+  "TreadXLGPS_mediaFull": {
+    "cat": "gameplay",
+    "order": 828,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionMedia(\"full\") end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Full screen video",
+    "desc": "Video full screen: the whole GPS screen, or the whole split side when split screen is on"
+  }
+}
