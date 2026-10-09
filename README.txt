@@ -39,6 +39,9 @@ server's courses are also sent to the server automatically ("Result sent to the 
 HOME (first button under the screen): home screen with Music, Video, Maps, Settings, Gallery. Themes: MENU > Display >
 Screen > Theme, then the power button to apply (Full: all; Adventure: Overland; Chase: Desert Racing, Rock Crawling;
 Rally: Rally; Track: JDM, Drift; Anime in every edition but Onyx).
+On the vehicle's screen: MENU > Display > Screen > On the vehicle's screen puts the unit on the car's own navigation
+screen (stock cars that have one). Click the dash screen or press Pop up (Options > Controls) to open it big for edits;
+BACK TO DASH puts it back. A car without a navigation screen keeps the unit in the HUD.
 Sign in (Adventure, Chase, Rally, Track Editions): your username goes on every recording and timed run (no password).
 On a BeamMP server your BeamMP name is used (not as a Guest); offline or after leaving a server, sign in to record or race.
 Baja75 Navigation Unit Alerts: a second HUD app with big flashing Wrong Way / Off Course / Slow Down warnings - place it anywhere.

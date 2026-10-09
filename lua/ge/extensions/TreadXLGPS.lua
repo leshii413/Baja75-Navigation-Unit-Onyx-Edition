@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.1.9'
+local VERSION = '3.2'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -161,6 +161,7 @@ end
 
 local function trigger(name, data)
   if guihooks and guihooks.trigger then guihooks.trigger(EV .. name, data) end
+  if M._dashFwd then M._dashFwd(name, data) end -- v3.2: the copy on the vehicle's own screen gets it too
 end
 
 local function toast(text, level)
@@ -3565,6 +3566,7 @@ local function tick()
   trigger('hud', buildHud())
   Dmg.tick()
   Snap.tick()
+  if M._dash then M._dash.tick() end
   if race then RunLog.hookVehicle(playerVehicle()) end
   M._tel.tick()
 end
@@ -3573,6 +3575,7 @@ function M.onUpdate(dtReal, dtSim)
   dtReal = tonumber(dtReal) or 0
   if M._lock then M._lock.check() end -- joined / left a Baja75 server: the screen is told
   clock = clock + dtReal
+  if M._dash then pcall(M._dash.frame) end -- v3.2: a click on the dash pops the unit up
   raceClock = raceClock + (tonumber(dtSim) or dtReal)
   if PN then PN.update(clock) end
   hudTimer = hudTimer + dtReal
@@ -4330,6 +4333,159 @@ LOCK.LOGIN = LOGIN
 LOCK.install()
 LOGIN.install()
 M._lock = LOCK
+end)() end
+
+-- ---------------------------------------------------------------- the unit on the vehicle's own screen (v3.2)
+-- MENU > Display > On the vehicle's screen: in a car that has a navigation screen (BeamNG's navigator, or a gauge screen
+-- with the navigation map), that screen shows a copy of the unit (dash.html), fed with everything the HUD app gets.
+-- The HUD app then hides itself and pops up big to edit: a click on your own car from close up (the dash, in the
+-- driver's view) or the Pop up key. Turning it off puts the car's own page back. (Inside a function: the main chunk is
+-- at Lua's 200-local limit.)
+do (function()
+local D = { on = false, vid = nil, tag = nil, at = -99, EVERY = 5, said = {}, sync = nil, replayAt = nil,
+  PAGE = 'local://local/ui/modules/apps/Baja75-GPS/dash.html' }
+-- the vehicle side: find the screen, put the page on it, say which (once per vehicle Lua; a reloaded car does it again)
+D.FIND = [==[
+local function merged(c)
+  local name, d = c.name or c.fileName, {}
+  for k, x in pairs(c) do d[k] = x end
+  for k, x in pairs(v.data[c.name or c.fileName] or {}) do d[k] = x end
+  return d, name
+end
+local function find()
+  local nav, gauge
+  for _, c in pairs(v and v.data and v.data.controller or {}) do
+    if type(c) == 'table' and type(c.fileName) == 'string' then
+      local d, name = merged(c)
+      if c.fileName:find('beamNavigator', 1, true) then
+        nav = nav or { tag = d.screenMaterialName or '@screen_gps', w = tonumber(d.textureWidth) or 256, h = tonumber(d.textureHeight) or 128, name = name, kind = 'nav' }
+      elseif c.fileName:lower():find('gauges', 1, true) then
+        local cfg = {}
+        for k, x in pairs(type(d.configuration) == 'table' and d.configuration or {}) do cfg[k] = x end
+        for k, x in pairs(d) do if type(k) == 'string' and k:sub(1, 14) == 'configuration_' and type(x) == 'table' then for a, b in pairs(x) do cfg[a] = b end end end
+        local mods, hasNav = type(d.displayData) == 'table' and d.displayData.customModules, false
+        if type(mods) == 'table' then for k in pairs(mods) do if tostring(k):lower():find('navigation', 1, true) then hasNav = true end end end
+        if hasNav and type(cfg.materialName) == 'string' then
+          gauge = gauge or { tag = cfg.materialName, w = tonumber(cfg.displayWidth) or 512, h = tonumber(cfg.displayHeight) or 256, name = name, kind = 'gauges' }
+        end
+      end
+    end
+  end
+  return nav or gauge -- the navigator's own screen first; a gauge screen with the map only when there is none
+end
+if not _G.__b75dash then
+  local f = find()
+  local id = obj:getID()
+  if f then
+    local w = math.min(1024, math.max(512, f.w * 2))
+    local h = math.floor(w * f.h / math.max(1, f.w) + 0.5)
+    obj:createWebView(f.tag, PAGE_URI, w, h, 1, 30)
+    _G.__b75dash = f
+    obj:queueGameEngineLua(string.format('if TreadXLGPS and TreadXLGPS.dashFound then TreadXLGPS.dashFound(%d, %q, %q) end', id, f.tag, f.kind))
+  else
+    _G.__b75dash = { none = true }
+    obj:queueGameEngineLua(string.format('if TreadXLGPS and TreadXLGPS.dashNone then TreadXLGPS.dashNone(%d) end', id))
+  end
+elseif _G.__b75dash.tag then
+  obj:queueGameEngineLua(string.format('if TreadXLGPS and TreadXLGPS.dashFound then TreadXLGPS.dashFound(%d, %q, %q) end', obj:getID(), _G.__b75dash.tag, _G.__b75dash.kind))
+end]==]
+-- ...and back: the car's own page again (its controller sets its screen up once more)
+D.UNDO = [==[
+local f = _G.__b75dash
+_G.__b75dash = nil
+if f and f.tag and f.name then
+  pcall(function()
+    local c = controller.getController(f.name)
+    local d = {}
+    for _, e in pairs(v.data.controller or {}) do if type(e) == 'table' and (e.name or e.fileName) == f.name then for k, x in pairs(e) do d[k] = x end end end
+    for k, x in pairs(v.data[f.name] or {}) do d[k] = x end
+    if f.kind == 'nav' and c and c.init then c.init(d) elseif c and c.initSecondStage then c.initSecondStage(d) end
+  end)
+end]==]
+function D.veh() return D.vid and getObjectByID(D.vid) or nil end
+function D.send(js)
+  local veh = D.veh()
+  if veh and D.tag then pcall(function() veh:queueJSUITexture(D.tag, js) end) end
+end
+function D.state() trigger('dashState', { on = D.on, screen = D.tag ~= nil }) end
+-- every event the HUD app gets goes to the screen too (as ['TreadXLGPS.name', data])
+-- not for the screen: the unit's keys and one-off replies (the screen copy would act on them a second time: music, videos)
+D.SKIP = { dashState = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
+M._dashFwd = function(name, data)
+  if not (D.on and D.tag) or D.SKIP[name] then return end
+  local ok, js = pcall(jsonEncode, { EV .. name, data })
+  if ok and js then D.send('window.txlDash && txlDash(' .. js .. ')') end
+end
+function D.apply(pv)
+  local code = D.FIND:gsub('PAGE_URI', string.format('%q', D.PAGE))
+  pcall(function() pv:queueLuaCommand(code) end)
+end
+function D.restore(veh)
+  if veh then pcall(function() veh:queueLuaCommand(D.UNDO) end) end
+end
+-- every HUD tick: the player's car, looked at every few seconds (a reloaded car loses the page; another car is looked at)
+function D.tick()
+  if D.replayAt and clock >= D.replayAt then
+    D.replayAt = nil
+    pcall(M.requestState); pcall(M.requestBaseMap, 0)
+    if D.sync then D.send(D.sync) end
+  end
+  if not D.on then return end
+  local pv = playerVehicle()
+  local id = nil
+  if pv then pcall(function() id = pv:getID() end) end
+  if id ~= D.vid then D.vid, D.tag, D.at = id, nil, -99; D.state() end
+  if pv and clock - D.at >= D.EVERY then D.at = clock; D.apply(pv) end
+end
+-- a click on your own car from close up (the dash, in the driver's view): the unit pops up (it doesn't close it:
+-- the pop-up's own buttons are clicks too)
+function D.frame()
+  if not (D.on and D.tag) then return end
+  local im = ui_imgui
+  if not (im and im.IsMouseClicked and im.IsMouseClicked(0)) then return end
+  if im.GetIO and im.GetIO().WantCaptureMouse then return end
+  local ok, res = pcall(function() return cameraMouseRayCast(true) end)
+  if not (ok and res and res.object and res.pos) then return end
+  local hit = nil
+  pcall(function() hit = res.object:getID() end)
+  if hit ~= D.vid then return end
+  local cam = core_camera and core_camera.getPosition and core_camera.getPosition()
+  if cam and (res.pos - cam):length() <= 1.8 then trigger('cmd', { cmd = 'popup', on = true }) end
+end
+M.dashFound = function(id, tag, kind)
+  if not D.on or tonumber(id) ~= D.vid then return end
+  local was = D.tag
+  D.tag = tostring(tag)
+  if was ~= D.tag then
+    D.replayAt = clock + 1.2 -- the page needs a moment to load, then it gets everything
+    log_('I', 'on the vehicle\'s ' .. (kind == 'nav' and 'navigation' or 'gauge') .. ' screen (' .. D.tag .. ')')
+    D.state()
+  end
+end
+M.dashNone = function(id)
+  if not D.on or tonumber(id) ~= D.vid then return end
+  if not D.said[id] then D.said[id] = true; toast('This vehicle has no navigation screen: the unit stays in the HUD', 'info') end
+  D.tag = nil; D.state()
+end
+M.setDash = function(on)
+  on = on == true or on == 'true'
+  if on == D.on then D.state(); return end
+  D.on = on
+  if not on then D.restore(D.veh()); D.tag, D.vid, D.replayAt = nil, nil, nil
+  else D.at, D.vid = -99, nil end
+  D.state()
+end
+-- the HUD app's settings and what's open, for the copy on the screen (checked: only plain JSON goes on)
+M.dashSync = function(json)
+  local ok, t = pcall(jsonDecode, tostring(json or ''))
+  if not ok or type(t) ~= 'table' then return end
+  local ok2, js = pcall(jsonEncode, t)
+  if not ok2 then return end
+  D.sync = 'window.txlDash && (function (o) { txlDash(["settings", o.settings]); txlDash(["view", o.view]); })(' .. js .. ')'
+  if D.on and D.tag then D.send(D.sync) end
+end
+M.actionPopup = function() trigger('cmd', { cmd = 'popup' }) end
+M._dash = D
 end)() end
 
 

@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.1.9';
+  var VERSION = '3.2';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -99,7 +99,8 @@
     mode: COMMON ? 'adventure' : 'chase', commonPreset: 0, modeFields: {}, split: false, display: 'gps', lastMedia: 'music', videoScreen: true, musicScreen: true, vidPip: 'br', musStyle: 'split', musPip: 'br',
     mediaVol: 0.7, mediaMuted: false, recentLinks: [], musicShuffle: false, musicRepeat: 'all',
     gaugesScreen: true, musicBar: true, musicWithCalls: false, pnPop: 'called', videoWeb: true, videoPage: '', videoBlocked: {}, driverName: '', raceNumber: '',
-    theme: 'baja75', themeNext: '' // v3.1.9: the theme in use, and one chosen in Display (applied by the power button)
+    theme: 'baja75', themeNext: '', // v3.1.9
+    dash: false // v3.2: on the vehicle's own navigation screen (this HUD app then pops up to edit): the theme in use, and one chosen in Display (applied by the power button)
   };
   var PN_ICON = 'Tread_XL_icon_pacenote.svg';
   // course names that get "Race This Route"
@@ -569,7 +570,9 @@
   function TreadXLApp(root, env) {
     this.root = root;
     this.env = env || {};
+    this.isDash = !!this.env.dash; // v3.2: the copy drawn on the vehicle's screen (dash.html): display only
     this.s = loadSettings();
+    if (this.isDash) { this.s.bezel = false; this.s.dash = false; }
     if (!shownIcon(this.s.markIcon)) this.s.markIcon = ONYX ? 'Tread_XL_icon_warning.svg' : 'Tread_XL_icon_checkpoint.svg'; // the edition's own symbols
     if (/youtube\.com|youtu\.be|youtube-nocookie/i.test(String(this.s.videoPage || ''))) this.s.videoPage = ''; // a video link pasted into the page box (v2.7.04)
     // the video pages BeamNG's screen refused, kept between sessions (a copy: never the DEFAULTS object itself)
@@ -649,7 +652,31 @@
       ' if TreadXLGPS.setDamageLog then TreadXLGPS.setDamageLog(' + (s.damageLog ? 'true' : 'false') + ') end end');
   };
   P.call = function (fn, args) { this.lua('if TreadXLGPS then TreadXLGPS.' + fn + '(' + (args || '') + ') end'); };
-  P.save = function () { saveSettings(this.s); };
+  P.save = function () { if (this.isDash) return; saveSettings(this.s); this.dashSync(); }; // the vehicle's screen never writes the unit's settings
+  // v3.2: the vehicle's screen shows a copy of this unit; it gets these settings and what's open (home screen)
+  P.dashSync = function () {
+    if (this.isDash || !this.s.dash) return;
+    var json = JSON.stringify({ settings: this.s, view: { home: !!this.home } }).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+    if (json === this.dashLast) return;
+    this.dashLast = json;
+    this.call('dashSync', luaStr(json));
+  };
+  // ...on the vehicle's screen (dash.html)
+  P.dashSettings = function (st) {
+    if (!st || typeof st !== 'object') return;
+    for (var k in st) if (k in DEFAULTS && typeof st[k] === typeof DEFAULTS[k]) this.s[k] = st[k];
+    this.s.bezel = false; this.s.dash = false;
+    this.applySettings(); this.renderMedia(); this.renderAll();
+  };
+  P.dashView = function (v) { if (v && typeof v.home === 'boolean' && v.home !== !!this.home) this.showHome(v.home); };
+  // the pop-up: the HUD app opens big in the middle of the view (dash click or key), and back
+  P.togglePop = function (on) {
+    if (!this.s.dash) { this.toast('Turn on MENU \u203a Display \u203a On the vehicle\u2019s screen first', 'info'); return; }
+    this.pop = typeof on === 'boolean' ? on : !this.pop;
+    this.root.setAttribute('data-pop', this.pop ? '1' : '0');
+    var self = this;
+    setTimeout(function () { self.resize(); self.renderAll(); }, 30);
+  };
 
   // ---------------------------------------------------------------- DOM
   P.build = function () {
@@ -735,6 +762,7 @@
       }).join('') + '</div>',
       ' <button class="txl-pwr" data-act="power" data-tip="Restart System" aria-label="Restart System">' + G.pwr + '</button>',
       ' <div class="txl-led"></div>',
+      ' <button class="txl-popx" data-act="popClose" title="Back to the dash">BACK TO DASH \u2715</button>',
       ' <div class="txl-bsod"><div class="e-h">BAJA75 NAVIGATION UNIT</div><div class="e-p">A fatal exception has occurred and the navigation system has been halted to prevent damage to your saved courses.</div>' +
       '<div class="e-p e-code">STOP: 0x000000B7 (0x00000047, 0x4E415653, 0x00000000, 0x00000000)<br>NAV_SYSTEM_INTEGRITY_FAULT</div>' +
       '<div class="e-p">* Restarting the unit or the game will not clear this error.<br>* If this keeps happening, contact Baja75 on Patreon.</div>' +
@@ -924,6 +952,7 @@
   };
   // the chime plays in the UI; if the page may not play audio yet, the game's own audio plays the same file
   P.playStartup = function (url) {
+    if (this.isDash) return; // one chime: the HUD unit's
     var self = this, settled = false;
     var vol = 0.8 * Math.max(0, Math.min(1, Number(this.s.chimeVol) || 0));
     var viaGame = function () { if (settled) return; settled = true; self.call('playSound', luaStr('startup') + ', ' + luaNum(vol.toFixed(2))); };
@@ -983,6 +1012,7 @@
   // ---------------------------------------------------------------- events from Lua / the game
   P.onEvent = function (name, d) {
     if (this.destroyed) return;
+    if (this.isDash && name === EV + 'cmd') return; // the vehicle's screen only shows: the keys act in the HUD unit
     switch (name) {
       case EV + 'basemap':
         if (!d) break;
@@ -1009,6 +1039,7 @@
           if (this.s.sound) { this.chimeUrl = d.startupSound; if (this.bootReady) this.playStartup(this.chimeUrl); else this.chimePending = true; }
         }
         if (!this.hello || (d && d.boot)) { this.call('setSound', this.s.sound ? 'true' : 'false'); this.pushPacenoteOptions(); this.pushMarkDefaults(); this.pushDriver(); }
+        if (!this.isDash && (!this.hello || (d && d.boot) || (d && d.dash !== !!this.s.dash))) { this.call('setDash', this.s.dash ? 'true' : 'false'); this.dashLast = null; this.dashSync(); } // v3.2: the game script knows
         this.hello = d || { version: '?' };
         clearTimeout(this.helloTimer);
         this.access = (d && d.access) || null; // on a Baja75 server? unlocked with the password? (Common: courses used)
@@ -1167,12 +1198,18 @@
         else if (d.cmd === 'orientation') this.act('orient');
         else if (d.cmd === 'mapChanged') this.mapChanged();
         else if (d.cmd === 'button') this.hwButton(Number(d.n));
+        else if (d.cmd === 'popup') { if (!this.isDash) this.togglePop(d.on); }
         else if (d.cmd === 'media') this.mediaKey(String(d.what || ''));
         break;
       case EV + 'toast': if (d && d.text) this.toast(d.text, d.level); break;
       case EV + 'locked': if (d && d.what) this.guard(d.what === 'wpts' ? 'wpts' : String(d.what)); break;
       case EV + 'notice': if (d && d.text) { this.notice = d; this.openSheet('notice'); } break;
       case EV + 'login': this.openLogin(d && d.what); break;
+      case EV + 'dashState': // v3.2: the game script says whether the unit is on this car's screen
+        this.dashScreen = !!(d && d.on && d.screen);
+        this.root.setAttribute('data-dashscreen', this.dashScreen ? '1' : '0');
+        if (!this.dashScreen && this.pop) this.togglePop(false);
+        break;
     }
   };
   // the game-side script answers requestState() with 'hello'; if it doesn't, say so on the screen
@@ -1343,6 +1380,7 @@
       case 'relock': this.call('lockAgain'); break;
       case 'keyOpen': this.unlockFor = { what: null }; this.unlockText = ''; this.openSheet('unlock'); break;
       case 'noticeOk': this.notice = null; this.openSheet(null); break;
+      case 'popClose': this.togglePop(false); break;
       case 'loginGo': {
         var lsh = this.el.sheets.login, lbox = lsh.querySelector('[data-in="loginName"]'), nbox = lsh.querySelector('[data-in="loginNum"]');
         var lname = cleanDriver(lbox ? lbox.value : this.loginName, 40).replace(/\s+$/, ''), lnum = cleanDriver(nbox ? nbox.value : this.loginNum, 8).replace(/\s+$/, '');
@@ -1536,10 +1574,11 @@
       case 'recDiscard': this.call('stopRecording', 'true'); break;
       case 'set': {
         var k = el.getAttribute('data-k');
-        if (isFree() && k !== 'themeNext') { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume, the key box and the theme can)
+        if (isFree() && k !== 'themeNext' && k !== 'dash') { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume, the key box, the theme and the vehicle's screen can)
         if (k === 'units') this.s.units = v;
         else if (k === 'northUp') this.s.northUp = v === '1';
         else if (k === 'bezel') this.s.bezel = v === '1';
+        else if (k === 'dash') { this.s.dash = v === '1'; this.pop = false; this.call('setDash', this.s.dash ? 'true' : 'false'); }
         else if (k === 'themeNext') { this.s.themeNext = themeOf(v).id === this.theme().id ? '' : themeOf(v).id; if (this.s.themeNext) this.toast(themeOf(v).name + ': press the power button to apply', 'info'); }
         else if (k === 'deck') this.s.deck = v === '1';
         else if (k === 'sharpTurns') this.s.sharpTurns = v === '1';
@@ -1658,6 +1697,9 @@
     var md = modeOf(this.s.mode);
     r.setAttribute('data-mode', md.id);
     r.setAttribute('data-edition', ED());
+    r.setAttribute('data-dash', this.s.dash && !this.isDash ? '1' : '0');
+    r.setAttribute('data-ondash', this.isDash ? '1' : '0');
+    if (!this.s.dash && this.pop) { this.pop = false; r.setAttribute('data-pop', '0'); }
     r.setAttribute('data-full', FULL ? '1' : '0');
     this.renderHw();
     var th = this.theme(); // v3.1.9: the theme's colour replaces the mode's (the default Baja75 theme keeps the mode colours)
@@ -2624,6 +2666,7 @@
         (THEMES.length > 1 && !ONYX ? '<div class="txl-row"><div class="grow"><div class="t1">Theme</div></div>' +
           seg('themeNext', this.s.themeNext || this.theme().id, THEMES.map(function (t) { return [t.id, t.name.toUpperCase()]; })) + '</div>' +
           '<div class="txl-note txl-themenote">' + (this.s.themeNext && this.s.themeNext !== this.theme().id ? '<b class="txl-themewait">' + esc(themeOf(this.s.themeNext).name) + ' is set: press the power button to restart the unit and apply it.</b>' : 'The case, colours and home screen. A new theme goes on when the unit restarts (power button).') + '</div>' : '') +
+        '<div class="txl-row"><div class="grow"><div class="t1">On the vehicle\u2019s screen</div><div class="t2">Shows the unit on the vehicle\u2019s own navigation screen (cars that have one). Click the dash or press <i>Pop up</i> (Options \u203a Controls) to open it here</div></div>' + seg('dash', this.s.dash ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Device bezel</div><div class="t2">Off = screen only, for small HUD space</div></div>' + seg('bezel', this.s.bezel ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Waypoint list</div></div>' + seg('deck', this.s.deck ? 1 : 0, [[1, 'SHOW'], [0, 'MAP ONLY']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Trip &amp; max speed</div></div>' + btn('resetTrip', 'Reset') + '</div></div>' +
@@ -2701,7 +2744,7 @@
     this.vid = null;      // { kind: 'yt' | 'file', ... }
     this.yts = { port: 0, asked: false, waiting: null, err: '' }; // the YouTube page the game serves (Error 153 fix)
     this.videoUrl = '';
-    try { this.audio = new window.Audio(); } catch (_) { this.audio = null; }
+    try { this.audio = new window.Audio(); if (this.isDash) this.audio.muted = true; } catch (_) { this.audio = null; }
     if (this.audio && typeof this.audio.addEventListener === 'function') {
       this.audio.addEventListener('ended', function () { self.musicEnded(); });
       this.audio.addEventListener('error', function () { if (self.audio.getAttribute('src')) self.musicError(); });
@@ -3378,6 +3421,7 @@
     if (!this.el.home) return;
     this.home = !!on;
     this.root.setAttribute('data-home', this.home ? '1' : '0');
+    if (!this.isDash) { this.dashLast = null; this.dashSync(); }
     if (this.home) { this.openSheet(null); this.renderHome(); }
   };
   P.renderHome = function () {
@@ -3891,7 +3935,7 @@
 
   // ---------------------------------------------------------------- Angular glue
   var HOOKS = [EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
-    EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login'];
+    EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login', EV + 'dashState'];
   TreadXLApp.HOOKS = HOOKS;
 
   if (window.angular && angular.module) {

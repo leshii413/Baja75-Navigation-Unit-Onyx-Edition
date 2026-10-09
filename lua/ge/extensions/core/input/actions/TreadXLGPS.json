@@ -1,4 +1,13 @@
 {
+  "TreadXLGPS_popup": {
+    "cat": "gameplay",
+    "order": 829,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS then TreadXLGPS.actionPopup() end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Pop up",
+    "desc": "With the unit on the vehicle's screen: opens it big in the middle of the view to edit, and back"
+  },
   "TreadXLGPS_record": {
     "cat": "gameplay",
     "order": 810,

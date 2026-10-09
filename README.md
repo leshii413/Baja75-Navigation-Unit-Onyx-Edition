@@ -218,6 +218,14 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## On the vehicle's own screen (v3.2)
+
+Turn on MENU → Display → *Screen* → **On the vehicle's screen** and the unit moves onto the car's own navigation screen (the stock cars that have one, such as the ETK, Bolide or Vivace dash screens). The HUD app hides itself while it's there; a car without a navigation screen keeps the unit in the HUD and tells you so once.
+
+- **Click the dash screen** (in a close-up / cockpit view) or press **Pop up** (Options → Controls → *Baja75 Navigation Unit: Pop up*, no default key) to open the full unit big in the middle of the view, for marking, menus and settings.
+- **BACK TO DASH ✕** (or the key again) puts it back on the screen.
+- The unit's other keys keep working while it's on the dash. Turning the setting off gives the car its own screen back.
+
 ## Display options worth knowing
 
 - **Dark mode**: OFF / ON / AUTO (night map colours from 7 PM to 6:30 AM).

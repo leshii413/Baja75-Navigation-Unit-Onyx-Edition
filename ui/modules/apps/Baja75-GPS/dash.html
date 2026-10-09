@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Baja75 Navigation Unit - vehicle screen</title>
+<!-- The Baja75 Navigation Unit on a vehicle's own navigation screen (MENU > Display > On the vehicle's screen).
+     The game draws this page onto the vehicle's screen. It can't be clicked: it shows what the unit shows, fed by the
+     game script (window.txlDash), and the unit's keys work on it. Clicking the dash or the pop-up key opens the full unit. -->
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+  #host { position: absolute; inset: 0; }
+</style>
+<link rel="stylesheet" href="/ui/modules/apps/Baja75-GPS/app.css">
+<script src="/ui/modules/apps/Baja75-GPS/app.js"></script>
+</head>
+<body>
+<div id="host"></div>
+<script>
+  (function () {
+    var host = document.getElementById('host');
+    var app = new window.TreadXLApp(host, { dash: true, lua: function () { } }); // display only: nothing goes back to the game
+    window.__txlApp = app;
+    // the game script sends ['event', data] (what the HUD app gets), ['settings', {...}] and ['view', {...}] (the HUD app's)
+    window.txlDash = function (m) {
+      try {
+        if (!m || !m.length) return;
+        if (m[0] === 'settings') app.dashSettings(m[1]);
+        else if (m[0] === 'view') app.dashView(m[1]);
+        else app.onEvent(m[0], m[1]);
+      } catch (e) { if (window.console) console.error('txlDash', e); }
+    };
+    window.addEventListener('resize', function () { app.resize(); });
+    // the stock navigator's own calls land here too: nothing to do with them
+    window.map = { updateData: function () { }, setData: function () { }, setBootscreenImage: function () { } };
+    window.updateMap = function () { }; window.initMap = function () { }; window.setup = function () { }; window.updateData = function () { };
+  })();
+</script>
+</body>
+</html>
