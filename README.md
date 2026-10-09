@@ -14,9 +14,9 @@ Road and overland exploration in metallic black.
 
 ![Home screen](previews/onyx_home.png)
 
-| Mark hazards and turns | Music | Your own videos | Routes |
-|---|---|---|---|
-| ![Mark hazards and turns](previews/onyx_mark.png) | ![Music](previews/onyx_music.png) | ![Your own videos](previews/onyx_video.png) | ![Routes](previews/onyx_menu.png) |
+| Mark hazards and turns | Music | Your own videos | Routes | Gallery |
+|---|---|---|---|---|
+| ![Mark hazards and turns](previews/onyx_mark.png) | ![Music](previews/onyx_music.png) | ![Your own videos](previews/onyx_video.png) | ![Routes](previews/onyx_menu.png) | ![Gallery](previews/gallery_onyx.png) |
 
 ## Eight editions
 
@@ -217,6 +217,16 @@ The round button at the far right of the bezel, next to the green light (hover: 
 | Common and Free Editions | Anime |
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
+
+## Map, music and gallery extras (v3.4)
+
+Every edition but Free and Common (on a Baja75 server those get them too):
+
+- **Clean map**: MENU → Display → On the map → *Clean map* shows only the route and your speed. Or hide parts one by one: *Map buttons* (zoom, compass, center), *Bottom buttons*, *Data boxes*, *Speed box*, *Scale bar*. With buttons hidden, tap the map to see them for a few seconds (HOME → Settings always opens the menu).
+- **Move the map in video mode**: drag the small map in the video's corner to look around; tap it for the full map; the round button puts it back on your car.
+- **Music bar**: the music player can be a bar over the map, like a phone's maps app with music playing (MENU → Display → *Music player* BAR), along the **bottom** or the **top** of the map or down its **left** or **right** side. Tap it for the full player.
+- **Music in split screen in every mode**: Chase and Rally too (Split screen ON, then DISPLAY to the music player).
+- **Gallery**: HOME → Gallery shows your BeamNG screenshots, 6 to a page, newest first; tap one to see it over the whole screen (‹ › for the next ones). OPEN FOLDER opens the folder.
 
 ## Pass requests during a race (v3.3)
 

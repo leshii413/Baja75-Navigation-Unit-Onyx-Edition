@@ -1304,3 +1304,105 @@
 .txl-pass .p-bar b { display: block; height: 100%; background: #4aa3ff; transition: width 0.5s linear; }
 .txl[data-compact="1"] .txl-pass { left: 0.6em; right: 0.6em; }
 .txl[data-deck="0"] .txl-pass { left: 0.6em; }
+
+/* ------------------------------------------------------------------ v3.4 (every edition but Free / Common) */
+/* the map's extras hidden (MENU > Display > On the map); a tap on the map shows the buttons for a few seconds */
+.txl[data-hidebtns="1"]:not([data-reveal="1"]) .txl-mapbtns { display: none; }
+.txl[data-hideact="1"]:not([data-reveal="1"]) .txl-actions { display: none; }
+.txl[data-hidefields="1"] .txl-fields { display: none; }
+.txl[data-hidespeed="1"] .txl-speedbox, .txl[data-hidespeed="1"] .txl-limit { display: none; }
+.txl[data-hidescale="1"] .txl-scale { display: none; }
+.txl[data-clean="1"] .txl-chips { display: none; }
+.txl[data-hideact="1"]:not([data-reveal="1"]) .txl-speed { bottom: 0.6em; }
+.txl[data-hideact="1"]:not([data-reveal="1"]) .txl-chips { bottom: 6.2em; }
+.txl[data-hidefields="1"] .txl-mapbtns { top: 3.1em; }
+.txl[data-hidefields="1"] .txl-alert { top: 3.2em; }
+.txl[data-reveal="1"] .txl-actions, .txl[data-reveal="1"] .txl-mapbtns { animation: txl-pass-in 0.18s ease-out; }
+
+/* the map in the video's corner: drag it to look around; this button puts it back on your car */
+.txl-piprc { display: none; }
+.txl[data-vplay="1"]:not([data-vpip="none"])[data-panned="1"] .txl-piprc {
+  display: flex; position: absolute; z-index: 49; width: 2.6em; height: 2.6em; border-radius: 0.5em; align-items: center; justify-content: center;
+  background: rgba(17, 19, 22, 0.85); box-shadow: 0 0.15em 0.4em rgba(0, 0, 0, 0.6);
+}
+.txl-piprc svg { width: 1.5em; height: 1.5em; }
+.txl[data-vpip="br"] .txl-piprc { right: calc(0.7em + 34% - 3em); bottom: calc(4.3em + 38% - 3em); }
+.txl[data-vpip="bl"] .txl-piprc { left: calc(0.7em + 0.4em); bottom: calc(4.3em + 38% - 3em); }
+.txl[data-vpip="tr"] .txl-piprc { right: calc(0.7em + 34% - 3em); top: calc(8.2em + 0.4em); }
+.txl[data-vpip="tl"] .txl-piprc { left: calc(0.7em + 0.4em); top: calc(8.2em + 0.4em); }
+.txl[data-vfull="1"][data-vpip="tr"] .txl-piprc, .txl[data-vfull="1"][data-vpip="tl"] .txl-piprc { top: 1.1em; }
+
+/* the music bar (instead of the music card): like a phone's maps app with music playing. Along the bottom (above the
+   buttons) or the top (under the data boxes) of the map, or a strip down its left or right side */
+.txl:not([data-mbmode="none"]) .txl-mbar { display: grid; z-index: 23; width: auto; min-width: 0; }
+.txl[data-mbmode="bottom"] .txl-mbar, .txl[data-mbmode="top"] .txl-mbar {
+  left: calc(30% + 0.6em); right: 0.6em; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto; padding: 0.4em 0.6em 0.55em 0.4em;
+}
+.txl[data-mbmode="bottom"] .txl-mbar .mb-art, .txl[data-mbmode="top"] .txl-mbar .mb-art { grid-row: 1; width: 3.2em; height: 3.2em; }
+.txl[data-mbmode="bottom"] .txl-mbar .mb-txt, .txl[data-mbmode="top"] .txl-mbar .mb-txt { grid-column: 2; grid-row: 1; }
+.txl[data-mbmode="bottom"] .txl-mbar .mb-ctl, .txl[data-mbmode="top"] .txl-mbar .mb-ctl { grid-column: 3; grid-row: 1; }
+.txl[data-mbmode="bottom"] .txl-mbar { bottom: 4.9em; }
+.txl[data-mbmode="bottom"] .txl-speed { bottom: 10.7em; }
+.txl[data-mbmode="bottom"] .txl-chips { bottom: 16.3em; }
+.txl[data-mbmode="bottom"][data-hideact="1"]:not([data-reveal="1"]) .txl-mbar { bottom: 0.6em; }
+.txl[data-mbmode="bottom"][data-hideact="1"]:not([data-reveal="1"]) .txl-speed { bottom: 6.4em; }
+.txl[data-mbmode="bottom"][data-hideact="1"]:not([data-reveal="1"]) .txl-chips { bottom: 12em; }
+.txl[data-mbmode="top"] .txl-mbar { top: 7.2em; bottom: auto; right: 4.9em; }
+.txl[data-mbmode="top"][data-hidefields="1"] .txl-mbar { top: 3.1em; }
+.txl[data-mbmode="top"] .txl-alert { top: 11.6em; }
+.txl[data-mbmode="top"][data-hidefields="1"] .txl-alert { top: 7.5em; }
+.txl[data-mbmode="left"] .txl-mbar, .txl[data-mbmode="right"] .txl-mbar {
+  top: 7.2em; bottom: 4.9em; width: 7.4em; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr auto; justify-items: center;
+  row-gap: 0.45em; padding: 0.6em 0.5em 0.8em; text-align: center;
+}
+.txl[data-mbmode="left"] .txl-mbar .mb-art, .txl[data-mbmode="right"] .txl-mbar .mb-art { grid-row: 1; grid-column: 1; width: 5.6em; height: 5.6em; }
+.txl[data-mbmode="left"] .txl-mbar .mb-txt, .txl[data-mbmode="right"] .txl-mbar .mb-txt { grid-row: 2; grid-column: 1; width: 100%; text-align: center; }
+.txl[data-mbmode="left"] .txl-mbar .mb-t, .txl[data-mbmode="right"] .txl-mbar .mb-t { white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; font-size: 1em; }
+.txl[data-mbmode="left"] .txl-mbar .mb-s, .txl[data-mbmode="right"] .txl-mbar .mb-s { white-space: normal; font-size: 0.78em; }
+.txl[data-mbmode="left"] .txl-mbar .mb-ctl, .txl[data-mbmode="right"] .txl-mbar .mb-ctl { grid-row: 4; grid-column: 1; gap: 0.25em; }
+.txl[data-mbmode="left"] .txl-mbar .mb-b, .txl[data-mbmode="right"] .txl-mbar .mb-b { width: 2em; height: 2em; font-size: 0.85em; }
+.txl[data-mbmode="left"] .txl-mbar .mb-b.play, .txl[data-mbmode="right"] .txl-mbar .mb-b.play { width: 2.3em; height: 2.3em; }
+.txl[data-mbmode="left"] .txl-mbar { left: calc(30% + 0.6em); }
+.txl[data-mbmode="left"] .txl-speed, .txl[data-mbmode="left"] .txl-chips { left: calc(30% + 8.6em); }
+.txl[data-mbmode="right"] .txl-mbar { right: 0.6em; left: auto; }
+.txl[data-mbmode="right"] .txl-mapbtns { right: 8.6em; }
+.txl[data-mbmode="right"] .txl-alert { right: 13.2em; }
+.txl[data-mbmode="left"] .txl-alert { left: calc(30% + 8.6em); }
+.txl[data-deck="0"][data-mbmode="left"] .txl-alert { left: 8.6em; }
+.txl[data-mbmode="left"][data-hidefields="1"] .txl-mbar, .txl[data-mbmode="right"][data-hidefields="1"] .txl-mbar { top: 3.1em; }
+.txl[data-mbmode="left"][data-hideact="1"]:not([data-reveal="1"]) .txl-mbar, .txl[data-mbmode="right"][data-hideact="1"]:not([data-reveal="1"]) .txl-mbar { bottom: 0.6em; }
+.txl[data-deck="0"][data-mbmode="bottom"] .txl-mbar, .txl[data-deck="0"][data-mbmode="top"] .txl-mbar, .txl[data-deck="0"][data-mbmode="left"] .txl-mbar { left: 0.6em; }
+.txl[data-deck="0"][data-mbmode="left"] .txl-speed, .txl[data-deck="0"][data-mbmode="left"] .txl-chips { left: 8.6em; }
+.txl:not([data-mbmode="none"]) .txl-deck { padding-bottom: 0.5em; }
+.txl:not([data-mbmode="none"]) .txl-deck .txl-card:nth-child(n+5) { display: flex; }
+.txl[data-compact="1"][data-mbmode="left"] .txl-mbar, .txl[data-compact="1"][data-mbmode="right"] .txl-mbar { width: 6.2em; }
+
+/* the gallery: BeamNG's screenshots, 6 to a page; a picture opens over the whole screen of the unit */
+.txl-gal { display: none; }
+.txl[data-gal="1"] .txl-gal {
+  display: flex; flex-direction: column; position: absolute; left: 0; right: 0; top: 2.5em; bottom: 0; z-index: 51; padding: 0.6em 0.8em 0.7em; gap: 0.5em;
+  background: radial-gradient(90% 80% at 50% 0%, #1d1f23 0%, #0a0b0c 60%, #050506 100%);
+}
+.g-head { display: flex; align-items: center; gap: 0.5em; }
+.g-head b { font-size: 1.3em; letter-spacing: 0.16em; }
+.g-head .g-n { font-weight: 700; color: var(--txl-dim); }
+.g-head .grow { flex: 1; }
+.g-head .g-x { width: 2.6em; padding: 0; }
+.g-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 0.55em; }
+.g-t { position: relative; min-height: 0; padding: 0; border-radius: 0.5em; overflow: hidden; background: #15171a; box-shadow: inset 0 0 0 0.1em rgba(255, 255, 255, 0.08); }
+.g-t img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.g-t span { position: absolute; left: 0; right: 0; bottom: 0; padding: 0.25em 0.45em; font-size: 0.78em; font-weight: 700; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0)); }
+.g-t.bad img { visibility: hidden; }
+.g-t.bad::before { content: "can't show"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--txl-dim); font-size: 0.85em; }
+.g-pg { display: flex; align-items: center; justify-content: center; gap: 1em; font-weight: 800; }
+.g-pg:empty { display: none; }
+.g-empty { grid-column: 1 / -1; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--txl-dim); line-height: 1.5; }
+.g-note { font-size: 0.85em; color: #ffd27a; text-align: center; }
+.txl-galview { display: none; }
+.txl[data-galview="1"] .txl-galview { display: block; position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 58; background: #000; }
+.txl-galview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.gv-bar { position: absolute; left: 50%; bottom: 0.7em; transform: translateX(-50%); display: flex; align-items: center; gap: 0.5em; padding: 0.3em; border-radius: 2em;
+  background: rgba(10, 11, 12, 0.78); box-shadow: 0 0.2em 0.6em rgba(0, 0, 0, 0.6); max-width: 94%; }
+.gv-b { width: 2.6em; height: 2.6em; border-radius: 50%; background: rgba(255, 255, 255, 0.1); font-size: 1.15em; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.gv-n { font-size: 0.85em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22em; padding: 0 0.3em; }

@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.3';
+  var VERSION = '3.4';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -49,6 +49,7 @@
   var FULL = false;
   function ED() { return FULL ? 'full' : EDITION; }   // the edition in effect
   function isCommon() { var e = ED(); return e === 'common' || e === 'free'; } // the Common Edition's limits (the Free Edition has them too)
+  function PLUS() { return !isCommon(); } // v3.4: the map / music / gallery extras: every edition but Free and Common (off the servers)
   function isFree() { return ED() === 'free'; } // the Free Edition off the servers: Adventure only, no REC, video or waypoint list, settings view-only
   var FREE_OFF = { recToggle: 1, recStart: 1, undoMark: 1, vidFull: 1, vidPlay: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, resetTrip: 1, siteCheck: 1, videoUnblock: 1, reloadMap: 1, mediaSplit: 1 };
   var COMMON_OFF = { mark: 1, chase: 1, autoPn: 1, clearAutoPn: 1, editNotes: 1, exportGpx: 1, serverPack: 1 }; // (video: yes, from v3.1.2)
@@ -94,6 +95,7 @@
     chaseInterval: 0, markIcon: 'Tread_XL_icon_checkpoint.svg', markLabel: '', markLimit: 35, mapOpacity: 1,
     clockSource: 'pc', darkMode: ONYX ? 'on' : 'off', chipVcp: true, chipPit: true, sound: true, chimeVol: 0.6, // (the Onyx Edition starts on the night map)
     alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, // passBtn: v3.3
+    mbarPos: 'bottom', cleanMap: false, mapBtns: true, actBtns: true, showFields: true, showSpeed: true, showScale: true, // v3.4
     markMode: 'symbols', pnDraft: { d: 1, c: 'three', len: '', sh: '', ca: 0, m: [] }, pnBar: true,
     pnCalls: 'on', pnLead: 'normal', pnVoice: '', pnNative: true, offCourseM: 15, damageLog: true, snapStyle: 'map',
     mode: COMMON ? 'adventure' : 'chase', commonPreset: 0, modeFields: {}, split: false, display: 'gps', lastMedia: 'music', videoScreen: true, musicScreen: true, vidPip: 'br', musStyle: 'split', musPip: 'br',
@@ -719,7 +721,7 @@
       '   <button class="txl-abtn" data-act="chase">' + G.chase + '<span>CHASE</span></button>',
       '   <button class="txl-abtn" data-act="menu">' + G.menu + '<span>MENU</span></button>',
       '  </div>',
-      '  <button class="txl-pipcap" data-act="pipMap" title="Full map"></button>',
+      '  <button class="txl-pipcap" data-act="pipMap" title="Full map (drag to move the map)"></button><button class="txl-piprc" data-act="center" title="Center the map on your vehicle">' + G.chase + '</button>',
       '  <div class="txl-media">',
       '   <div class="md-head"><b class="md-title"></b><span class="md-sub"></span><span class="grow"></span>',
       '    <button class="md-btn swap" data-act="mediaSwap" title="Video / music"></button><button class="md-btn split" data-act="mediaSplit" title="Full screen / split screen"></button><button class="md-btn x" data-act="mediaClose" title="Back to the map">' + G.close + '</button></div>',
@@ -755,6 +757,8 @@
           return '<button class="h-tile" data-act="homeGo" data-v="' + t[0] + '"><i>' + t[2] + '</i><span>' + t[1] + '</span></button>';
         }).join('') + '</div>' + (ONYX ? '<img class="h-gem" src="' + APP_DIR + 'onyx/gem.svg" alt="">' : '') + '</div>'),
       '  <div class="txl-pass" aria-live="polite"></div>',
+      '  <div class="txl-gal"><div class="g-head"><b>GALLERY</b><span class="g-n"></span><span class="grow"></span><button class="txl-btn" data-act="openFolder" data-v="screenshots">OPEN FOLDER</button><button class="txl-btn g-x" data-act="galClose" title="Close">\u2715</button></div><div class="g-grid"></div><div class="g-pg"></div></div>',
+      '  <div class="txl-galview"><img alt=""><div class="gv-bar"><button class="gv-b" data-act="galPrev" title="Previous">\u2039</button><span class="gv-n"></span><button class="gv-b" data-act="galNext" title="Next">\u203a</button><button class="gv-b" data-act="galViewClose" title="Back to the gallery">\u2715</button></div></div>',
       '  <div class="txl-nudge"><div class="n-t">Access to other features requires the product key to unlock it.</div><div class="n-s">Contact Baja75 on Patreon for assistance.</div><div class="n-b"><button class="txl-btn primary" data-act="nudgeKey">ENTER KEY</button><button class="txl-btn" data-act="nudgeClose">OK</button></div></div>',
       '  <div class="txl-dead"><div class="d-t">This unit is disabled</div><div class="d-s">Contact Baja75 Support to unlock it. Take a screenshot of this screen and send it with your request.</div>' + '<button class="txl-btn primary" data-act="keyOpen">ENTER KEY</button></div>',
       '  <div class="txl-boot show"><div class="b-logo"><img src="' + APP_DIR + (ONYX ? 'onyx/logo.svg' : 'logo.png') + '" alt="' + (ONYX ? 'Onyx Edition' : 'Baja75 Navigation Unit') + '"></div><div class="b-sub">10\u2033 ' + (ONYX ? 'OVERLAND' : 'OFF-ROAD') + ' NAVIGATOR' + (EDITION_NAME ? ' \u00b7 ' + EDITION_NAME.toUpperCase() : '') + '</div><div class="b-bar"><i></i></div><div class="b-txt">Loading map\u2026</div><div class="b-info"></div></div>',
@@ -784,7 +788,7 @@
       limit: q('.txl-limit'), scale: q('.txl-scale'), orient: q('.orient'), center: q('[data-act="center"]'),
       chaseBtn: q('[data-act="chase"]'), recBtn: q('[data-act="recToggle"]'), toast: q('.txl-toast'), banner: q('.txl-banner'),
       chips: q('.txl-chips'), pnbar: q('.txl-pnbar'), count: q('.txl-count'), result: q('.txl-result'), boot: q('.txl-boot'), raceBtn: q('[data-act="raceGo"]'),
-      actions: q('.txl-actions'), media: q('.txl-media'), pass: q('.txl-pass'), passBtn: q('[data-act="passReq"]'), brandTag: q('.txl-brand b'), mbar: q('.txl-mbar'),
+      actions: q('.txl-actions'), media: q('.txl-media'), pass: q('.txl-pass'), gal: q('.txl-gal'), galView: q('.txl-galview'), passBtn: q('[data-act="passReq"]'), brandTag: q('.txl-brand b'), mbar: q('.txl-mbar'),
       sheets: { menu: q('[data-sheet="menu"]'), mark: q('[data-sheet="mark"]'), chase: q('[data-sheet="chase"]'), unlock: q('[data-sheet="unlock"]'), notice: q('[data-sheet="notice"]'), login: q('[data-sheet="login"]') }
     };
     // stylesheet (legacy apps don't load app.css on their own in every game version)
@@ -829,8 +833,11 @@
       self.pan = [drag.px + ev.clientX - drag.x, drag.py + ev.clientY - drag.y];
       self.updatePanUi();
     };
-    this.onUp = function () {
+    this.onUp = function (ev) {
       if (!drag) return;
+      var moved = ev && Math.abs(ev.clientX - drag.x) + Math.abs(ev.clientY - drag.y) > 5;
+      if (moved && drag.pip) self.pipDragAt = Date.now(); // (the click that ends a drag doesn't open the full map)
+      if (!moved && !drag.pip) self.revealButtons();
       drag = null; map.classList.remove('dragging');
       document.removeEventListener('mousemove', self.onMove, true);
       document.removeEventListener('mouseup', self.onUp, true);
@@ -844,6 +851,19 @@
       ev.preventDefault();
     });
     map.addEventListener('wheel', function (ev) { ev.preventDefault(); self.zoom(ev.deltaY < 0 ? 1 : -1); }, { passive: false });
+    // v3.4: the map in the corner of the video: drag it to look around (every edition but Free / Common)
+    var cap = r.querySelector('.txl-pipcap');
+    if (cap) {
+      cap.addEventListener('mousedown', function (ev) {
+        if (ev.button !== 0 || !PLUS()) return;
+        drag = { x: ev.clientX, y: ev.clientY, px: self.pan[0], py: self.pan[1], pip: true };
+        map.classList.add('dragging');
+        document.addEventListener('mousemove', self.onMove, true);
+        document.addEventListener('mouseup', self.onUp, true);
+        ev.preventDefault();
+      });
+      cap.addEventListener('wheel', function (ev) { if (!PLUS()) return; ev.preventDefault(); self.zoom(ev.deltaY < 0 ? 1 : -1); }, { passive: false });
+    }
     // typing: BeamNG hands the keyboard to the UI by itself while a text box has focus, so the app never intercepts
     // keys. Enter runs the box's action; Escape lets go of the box (the keys go back to driving).
     r.addEventListener('keydown', function (ev) {
@@ -984,7 +1004,16 @@
   P.updatePanUi = function () {
     var panned = Math.abs(this.pan[0]) + Math.abs(this.pan[1]) > 4;
     this.el.center.classList.toggle('panned', panned);
+    this.root.setAttribute('data-panned', panned ? '1' : '0');
     this.ov.xhair.setAttribute('visibility', panned ? 'visible' : 'hidden');
+  };
+  // v3.4: buttons hidden on the map (MENU > Display > On the map): a tap on the map shows them for a few seconds
+  P.revealButtons = function () {
+    if (!(this.s.cleanMap || !this.s.mapBtns || !this.s.actBtns) || !PLUS()) return;
+    var self = this;
+    this.root.setAttribute('data-reveal', '1');
+    clearTimeout(this.revealTimer);
+    this.revealTimer = setTimeout(function () { self.root.setAttribute('data-reveal', '0'); }, 6000);
   };
   P.zoom = function (dir) {
     this.s.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.s.zoom * (dir > 0 ? 1.35 : 1 / 1.35)));
@@ -1238,6 +1267,7 @@
       case EV + 'locked': if (d && d.what) this.guard(d.what === 'wpts' ? 'wpts' : String(d.what)); break;
       case EV + 'notice': if (d && d.text) { this.notice = d; this.openSheet('notice'); } break;
       case EV + 'login': this.openLogin(d && d.what); break;
+      case EV + 'gallery': this.galData = d || { shots: [] }; this.galBad = 0; this.renderGallery(); break;
       case EV + 'pass': // v3.3: race passing alerts (the PASS button, the incoming request card)
         this.passData = d || null;
         this.renderPass();
@@ -1418,6 +1448,12 @@
       case 'keyOpen': this.unlockFor = { what: null }; this.unlockText = ''; this.openSheet('unlock'); break;
       case 'noticeOk': this.notice = null; this.openSheet(null); break;
       case 'popClose': this.togglePop(false); break;
+      case 'galClose': this.galOpen(false); break;
+      case 'galPage': this.galPage = Math.max(0, Number(v) || 0); this.renderGallery(); break;
+      case 'galShow': this.galShow(Number(v)); break;
+      case 'galPrev': this.galShow(this.galIdx - 1); break;
+      case 'galNext': this.galShow(this.galIdx + 1); break;
+      case 'galViewClose': this.galShow(-1); break;
       case 'passReq': this.call('passRequest'); break;
       case 'passOk': if (v) this.call('passAck', luaStr(v)); break;
       case 'passDismiss': if (v) this.call('passDismiss', luaStr(v)); break;
@@ -1576,15 +1612,15 @@
       case 'hw': this.hwButton(Number(v)); break;
       case 'power': this.restartSystem(); break;
       case 'vidFull': this.setVideoFull(!this.vfull); break;
-      case 'pipMap': this.s.display = 'gps'; this.save(); this.applySettings(); this.renderMedia(); this.renderAll(); break; // the map, full
-      case 'mediaClose': this.vfull = false; this.s.split = false; this.s.display = 'gps'; this.save(); this.applySettings(); this.renderMedia(); this.renderAll(); break;
+      case 'pipMap': if (this.pipDragAt && Date.now() - this.pipDragAt < 400) break; this.s.display = 'gps'; this.save(); this.applySettings(); this.renderMedia(); this.renderAll(); break; // the map, full
+      case 'mediaClose': this.mbarBig = false; this.vfull = false; this.s.split = false; this.s.display = 'gps'; this.save(); this.applySettings(); this.renderMedia(); this.renderAll(); break;
       case 'mediaSplit': {
         if (!this.guard('split')) break;
         if (!capsOf(this.s.mode).split) { this.toast('Split screen is for Adventure and Track mode (Chase and Rally have the music bar)', 'info'); break; }
         var pk0 = this.panelKind(); this.s.split = !this.s.split; if (pk0) { this.s.display = pk0; this.s.lastMedia = pk0; } this.save(); this.applySettings(); this.renderMedia(); this.renderAll(); break;
       }
       case 'mediaSwap': { var scr = this.screens(), nk = scr[(scr.indexOf(this.panelKind()) + 1) % scr.length]; if (nk) { this.s.display = nk; this.s.lastMedia = nk; } this.save(); this.applySettings(); this.renderMedia(); break; }
-      case 'mbarOpen': this.s.display = 'music'; this.s.lastMedia = 'music'; this.save(); this.applySettings(); this.renderMedia(); this.renderAll(); break;
+      case 'mbarOpen': if (this.barMode) { this.mbarBig = true; this.applySettings(); this.renderMedia(); this.renderAll(); break; } this.s.display = 'music'; this.s.lastMedia = 'music'; this.save(); this.applySettings(); this.renderMedia(); this.renderAll(); break;
       case 'mediaRescan': this.call('requestMedia'); this.toast('Looking for new files', 'info'); break;
       case 'mediaMute': this.mediaKey('mute'); break;
       case 'vidPaste': this.call('readClipboard'); break;
@@ -1634,6 +1670,7 @@
         else if (k === 'alertsMode') this.s.alertsMode = v;
         else if (k === 'alertsFlash') this.s.alertsFlash = v === '1';
         else if (k === 'passBtn') { this.s.passBtn = v === '1'; this.renderPass(); }
+        else if (k === 'cleanMap' || k === 'mapBtns' || k === 'actBtns' || k === 'showFields' || k === 'showSpeed' || k === 'showScale') { if (!PLUS()) return; this.s[k] = v === '1'; }
         else if (k === 'chimeVol') this.s.chimeVol = Math.max(0, Math.min(1, Number(v) || 0));
         else if (k === 'sound') { this.s.sound = v === '1'; this.call('setSound', this.s.sound ? 'true' : 'false'); }
         else if (k === 'pnCalls' || k === 'pnLead' || k === 'pnVoice') { this.s[k] = v; if (k === 'pnVoice' && this.pnInfo) this.pnInfo.voice = v; this.pushPacenoteOptions(); }
@@ -1645,11 +1682,13 @@
         else if (k === 'mode') { if (this.guard('modes')) this.setMode(v); return; }
         else if (k === 'split') {
           var pk1 = this.panelKind(); this.s.split = v === '1'; if (pk1) this.s.display = pk1;
-          if (this.s.split && !capsOf(this.s.mode).split) this.toast('Split screen works in Adventure and Track mode', 'info');
+          if (this.s.split && !capsOf(this.s.mode).split) this.toast(PLUS() ? modeOf(this.s.mode).name + ' MODE: split screen with the music player' : 'Split screen works in Adventure and Track mode', 'info');
         }
-        else if (k === 'vidPip' || k === 'musStyle' || k === 'musPip') {
+        else if (k === 'vidPip' || k === 'musStyle' || k === 'musPip' || k === 'mbarPos') {
           if (!this.guard('pip', function () { this.openSheet('menu'); })) return;
-          this.s[k] = k === 'musStyle' ? (v === 'pip' ? 'pip' : 'split') : (/^(tl|tr|bl|br)$/.test(v) ? v : 'br');
+          if (k === 'mbarPos') this.s.mbarPos = /^(bottom|top|left|right)$/.test(v) ? v : 'bottom';
+          else this.s[k] = k === 'musStyle' ? (v === 'pip' ? 'pip' : 'split') : (/^(tl|tr|bl|br)$/.test(v) ? v : 'br');
+          this.mbarBig = false;
         }
         else if (k === 'videoScreen') this.s.videoScreen = v === '1';
         else if (k === 'musicScreen') this.s.musicScreen = v === '1';
@@ -1750,12 +1789,25 @@
     if (this.logoSrc !== logo) { this.logoSrc = logo; var li = this.root.querySelectorAll('.txl-logo, .txl-boot .b-logo img'); for (var i = 0; i < li.length; i++) li[i].src = APP_DIR + logo; }
     if (this.el.brandTag) this.el.brandTag.textContent = md.name;
     var pk = this.panelKind();
+    // v3.4: music as a bar over the map instead of the card (tap it: the full player until DISPLAY or the map)
+    var pcb = this.pipCfg(), barMode = PLUS() && pk === 'music' && !this.splitOn() && pcb.ms === 'pip' && !this.mbarBig;
+    this.barMode = barMode;
+    r.setAttribute('data-mbmode', barMode ? (pcb.open ? this.s.mbarPos : 'bottom') : 'none');
+    if (barMode) pk = null;
+    var big = PLUS() && this.mbarBig && this.panelKind() === 'music' && !this.splitOn();
+    var cl = PLUS() && this.s.cleanMap;
+    r.setAttribute('data-hidebtns', PLUS() && (cl || !this.s.mapBtns) ? '1' : '0');
+    r.setAttribute('data-hideact', PLUS() && (cl || !this.s.actBtns) ? '1' : '0');
+    r.setAttribute('data-hidefields', PLUS() && (cl || !this.s.showFields) ? '1' : '0');
+    r.setAttribute('data-hidespeed', PLUS() && !cl && !this.s.showSpeed ? '1' : '0');
+    r.setAttribute('data-hidescale', PLUS() && (cl || !this.s.showScale) ? '1' : '0');
+    r.setAttribute('data-clean', cl ? '1' : '0');
     r.setAttribute('data-panel', pk || 'none');
     r.setAttribute('data-split', pk && this.splitOn() ? '1' : '0');
     if (pk !== 'video') this.vfull = false; // full screen belongs to the video screen
     var pc = this.pipCfg(), sp = pk && this.splitOn();
     r.setAttribute('data-vpip', pk === 'video' && !sp ? pc.v : 'none'); // (shown while a video plays: data-vplay)
-    r.setAttribute('data-mpip', pk === 'music' && !sp && pc.ms === 'pip' ? pc.m : 'none');
+    r.setAttribute('data-mpip', pk === 'music' && !sp && pc.ms === 'pip' && !big ? pc.m : 'none');
     r.setAttribute('data-vfull', this.vfull ? '1' : '0');
     this.renderMusicBar();
     r.setAttribute('data-bezel', this.s.bezel ? '1' : '0');
@@ -2643,7 +2695,14 @@
         '<div class="txl-row"><div class="grow"><div class="t1">Dark mode</div><div class="t2">Night map colours. Auto = from 7 PM to 6:30 AM (in-game time when the clock uses it)</div></div>' + seg('darkMode', this.s.darkMode, [['off', 'OFF'], ['on', 'ON'], ['auto', 'AUTO']]) + '</div></div>' +
         '<div class="txl-sec"><h3>On the map</h3>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Distance to next VCP</div><div class="t2">Card above the speed</div></div>' + seg('chipVcp', this.s.chipVcp ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
-        '<div class="txl-row"><div class="grow"><div class="t1">Distance to next pit</div><div class="t2">Pit symbols on the loaded course</div></div>' + seg('chipPit', this.s.chipPit ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div></div>' +
+        '<div class="txl-row"><div class="grow"><div class="t1">Distance to next pit</div><div class="t2">Pit symbols on the loaded course</div></div>' + seg('chipPit', this.s.chipPit ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
+        (PLUS() ? '<div class="txl-row"><div class="grow"><div class="t1">Clean map</div><div class="t2">Only the route and your speed. Tap the map to see the buttons for a few seconds</div></div>' + seg('cleanMap', this.s.cleanMap ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
+          (this.s.cleanMap ? '' :
+          '<div class="txl-row"><div class="grow"><div class="t1">Map buttons</div><div class="t2">Zoom, track up / north up, center</div></div>' + seg('mapBtns', this.s.mapBtns ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
+          '<div class="txl-row"><div class="grow"><div class="t1">Bottom buttons</div><div class="t2">Race, PASS, REC, MARK, Co-pilot, MENU (hidden: tap the map; HOME \u203a Settings opens the menu)</div></div>' + seg('actBtns', this.s.actBtns ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
+          '<div class="txl-row"><div class="grow"><div class="t1">Data boxes</div><div class="t2">The boxes along the top of the map</div></div>' + seg('showFields', this.s.showFields ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
+          '<div class="txl-row"><div class="grow"><div class="t1">Speed box</div><div class="t2">Speed and speed limit</div></div>' + seg('showSpeed', this.s.showSpeed ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
+          '<div class="txl-row"><div class="grow"><div class="t1">Scale bar</div></div>' + seg('showScale', this.s.showScale ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>') : '') + '</div>' +
         '<div class="txl-sec"><h3>Clock &amp; sound</h3>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Clock</div><div class="t2">Status bar and the Time field</div></div>' + seg('clockSource', this.s.clockSource, [['pc', 'COMPUTER'], ['game', 'IN-GAME']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Sounds</div><div class="t2">Start-up chime and race countdown. Your own chime: settings/TreadXLGPS/sounds/startup.ogg</div></div>' + seg('sound', this.s.sound ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
@@ -2669,13 +2728,15 @@
         '<div class="txl-row"><div class="grow"><div class="t1">Damage log</div><div class="t2">Timed runs also list the parts damaged in each crash (MENU \u203a Times and race_log.txt)</div></div>' + seg('damageLog', this.s.damageLog ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div></div>' +
         '<div class="txl-sec"><h3>Modes &amp; screens</h3>' +
         (MODES.length > 1 ? '<div class="txl-row"><div class="grow"><div class="t1">Mode</div><div class="t2">Button 1 (MODE) under the screen switches it too; each mode keeps its own data fields</div></div>' + seg('mode', modeOf(this.s.mode).id, MODES.map(function (m) { return [m.id, m.name]; })) + '</div>' : '') +
-        (MODES.some(function (m) { return capsOf(m.id).split; }) ? '<div class="txl-row"><div class="grow"><div class="t1">Split screen</div><div class="t2">Adventure and Track: map on the left, video, music or (Track) gauges on the right. Chase and Rally use the music bar instead</div></div>' + seg('split', this.s.split ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' : '') +
+        (MODES.some(function (m) { return capsOf(m.id).split; }) || PLUS() ? '<div class="txl-row"><div class="grow"><div class="t1">Split screen</div><div class="t2">' + (PLUS() ? 'Map on the left; on the right: video, music or (Track) gauges in Adventure and Track, the music player in every mode' : 'Adventure and Track: map on the left, video, music or (Track) gauges on the right. Chase and Rally use the music bar instead') + '</div></div>' + seg('split', this.s.split ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' : '') +
         ('<div class="txl-row"><div class="grow"><div class="t1">Video screen</div><div class="t2">YouTube links and your WebM videos (settings/TreadXLGPS/videos)</div></div>' + seg('videoScreen', this.s.videoScreen ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>') +
         (function (self) {
           var pc = self.pipCfg(), CORNERS = [['tl', 'TOP L'], ['tr', 'TOP R'], ['bl', 'BOT L'], ['br', 'BOT R']], lk = pc.open ? '' : ' <span class="lk">' + G.lock + '</span>';
           return '<div class="txl-row"><div class="grow"><div class="t1">Map over the video' + lk + '</div><div class="t2">The video fills the screen; the map sits small in this corner (tap it for the full map)</div></div>' + seg('vidPip', pc.v, CORNERS) + '</div>' +
-            '<div class="txl-row"><div class="grow"><div class="t1">Music player' + lk + '</div><div class="t2">A small card over the map, or the full / split screen</div></div>' + seg('musStyle', pc.ms, [['pip', 'CARD'], ['split', 'SCREEN']]) + '</div>' +
-            (pc.ms === 'pip' ? '<div class="txl-row"><div class="grow"><div class="t1">Music card corner' + lk + '</div></div>' + seg('musPip', pc.m, CORNERS) + '</div>' : '') +
+            (PLUS() ? '<div class="txl-row"><div class="grow"><div class="t1">Music player' + lk + '</div><div class="t2">A music bar over the map (tap it for the full player), or the full / split screen</div></div>' + seg('musStyle', pc.ms, [['pip', 'BAR'], ['split', 'SCREEN']]) + '</div>' +
+              (pc.ms === 'pip' ? '<div class="txl-row"><div class="grow"><div class="t1">Music bar' + lk + '</div><div class="t2">Along the bottom or the top of the map, or down its left or right side</div></div>' + seg('mbarPos', pc.open ? self.s.mbarPos : 'bottom', [['bottom', 'BOTTOM'], ['top', 'TOP'], ['left', 'LEFT'], ['right', 'RIGHT']]) + '</div>' : '')
+            : '<div class="txl-row"><div class="grow"><div class="t1">Music player' + lk + '</div><div class="t2">A small card over the map, or the full / split screen</div></div>' + seg('musStyle', pc.ms, [['pip', 'CARD'], ['split', 'SCREEN']]) + '</div>' +
+              (pc.ms === 'pip' ? '<div class="txl-row"><div class="grow"><div class="t1">Music card corner' + lk + '</div></div>' + seg('musPip', pc.m, CORNERS) + '</div>' : '')) +
             (pc.open ? '' : '<div class="txl-note">These are set on a Baja75 server or with the unit unlocked (a personal-use license from Baja75 on Patreon).</div>');
         })(this) +
         '<div class="txl-row"><div class="grow"><div class="t1">Music player screen</div><div class="t2">Your music (settings/TreadXLGPS/music)</div></div>' + seg('musicScreen', this.s.musicScreen ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
@@ -2824,8 +2885,10 @@
   // split screen is on and this mode has it (Adventure, Tuner)
   P.splitOn = function () {
     if (isCommon()) return false; // the Common Edition off the servers: video full screen with the map in the corner
-    if (this.panelKind && this.s.display === 'music' && this.pipCfg().ms === 'pip') return false; // music as a corner card
-    return !!(this.s.split && capsOf(this.s.mode).split);
+    if (this.panelKind && this.s.display === 'music' && this.pipCfg().ms === 'pip') return false; // music as a corner card / bar
+    if (!this.s.split) return false;
+    if (capsOf(this.s.mode).split) return true;
+    return PLUS() && (this.s.display === 'music' || (this.s.display === 'gps' && this.s.lastMedia === 'music' && this.s.musicScreen)); // v3.4: music split in Chase / Rally too
   };
   // picture-in-picture: the map's corner over the video, music as a corner card or the full / split screen.
   // Choosing them needs a Baja75 server or the unit unlocked; otherwise bottom right, music as a card.
@@ -2852,7 +2915,7 @@
     var md = modeOf(id), c = capsOf(md.id), s = this.s;
     s.mode = md.id;
     // a screen this mode doesn't have goes back to the map; Tuner's split side starts on the gauges
-    if (s.split && !c.split && s.display !== 'gps') s.display = 'gps';
+    if (s.split && !c.split && s.display !== 'gps' && !(PLUS() && s.display === 'music')) s.display = 'gps'; // (v3.4: music keeps its split side)
     if (s.display === 'gauges' && !c.gauges) s.display = 'gps';
     if (c.gauges && s.split && s.gaugesScreen && s.display === 'gps') s.lastMedia = 'gauges';
     this.save(); this.applySettings(); this.renderMedia(); this.renderAll();
@@ -2863,6 +2926,7 @@
   // button 2: map -> video -> music (the screens switched on in Display); in split screen it swaps the right side
   P.cycleDisplay = function () {
     var s = this.s, l = this.screens();
+    this.mbarBig = false;
     if (!l.length) { this.toast('Turn on the video or music screen in MENU \u203a Display', 'info'); return; }
     if (this.splitOn()) {
       var cur = this.panelKind();
@@ -3461,6 +3525,7 @@
   P.theme = function () { return ONYX ? THEMES[0] : themeOf(this.s.theme); };
   P.showHome = function (on) {
     if (!this.el.home) return;
+    if (!on && this.galOn) this.galOpen(false);
     this.home = !!on;
     this.root.setAttribute('data-home', this.home ? '1' : '0');
     if (!this.isDash) { this.dashLast = null; this.dashSync(); }
@@ -3474,7 +3539,10 @@
   };
   P.homeGo = function (where) {
     var s = this.s;
-    if (where === 'gallery') { this.call('openFolder', luaStr('screenshots')); return; } // BeamNG's screenshots folder, in Explorer
+    if (where === 'gallery') { // v3.4: the screenshots in a gallery view (Free / Common: BeamNG's screenshots folder, in Explorer)
+      if (PLUS()) this.galOpen(true); else this.call('openFolder', luaStr('screenshots'));
+      return;
+    }
     if (where === 'video' && isFree()) { this.nudge(); return; } // the Free Edition: no video off the servers
     this.showHome(false);
     if (where === 'settings') { this.openSheet('menu'); this.menuTab = 'display'; this.renderSheet(); return; }
@@ -3581,7 +3649,7 @@
     var el = this.el.mbar;
     if (!el) return;
     var list = arr(this.media && this.media.music), c = capsOf(this.s.mode);
-    var show = !!(c.musicBar && this.s.musicBar && this.s.musicScreen && list.length && this.panelKind() !== 'music');
+    var show = !!(this.barMode || (c.musicBar && this.s.musicBar && this.s.musicScreen && list.length && this.panelKind() !== 'music'));
     this.root.setAttribute('data-mbar', show ? '1' : '0');
     if (!show) return;
     var a = this.audio, t = list[this.mus.i], playing = !!(a && !a.paused && t), held = !!this.mus.held;
@@ -3953,6 +4021,53 @@
     }
   };
 
+  // ---------------------------------------------------------------- gallery (v3.4): BeamNG's screenshots, 6 to a page
+  P.galOpen = function (on) {
+    this.galOn = !!on;
+    this.root.setAttribute('data-gal', on ? '1' : '0');
+    if (!on) { this.galShow(-1); return; }
+    this.galPage = 0; this.galData = null;
+    this.renderGallery();
+    this.call('requestGallery');
+  };
+  P.renderGallery = function () {
+    var el = this.el.gal;
+    if (!el || !this.galOn) return;
+    var d = this.galData, shots = d ? arr(d.shots) : null, per = 6;
+    var pages = shots ? Math.max(1, Math.ceil(shots.length / per)) : 1;
+    this.galPage = Math.min(this.galPage || 0, pages - 1);
+    el.querySelector('.g-n').textContent = shots ? (d.total > shots.length ? ' \u00b7 newest ' + shots.length + ' of ' + d.total : ' \u00b7 ' + shots.length) : '';
+    var grid = el.querySelector('.g-grid'), pg = el.querySelector('.g-pg'), self = this;
+    if (!shots) { grid.innerHTML = '<div class="g-empty">Loading your screenshots\u2026</div>'; pg.innerHTML = ''; return; }
+    if (!shots.length) { grid.innerHTML = '<div class="g-empty">No screenshots yet. Take one in the game (F12 by default); they are saved in<br><span class="mono">' + esc(d.real || 'screenshots') + '</span></div>'; pg.innerHTML = ''; return; }
+    var from = this.galPage * per;
+    grid.innerHTML = shots.slice(from, from + per).map(function (sh, k) {
+      return '<button class="g-t" data-act="galShow" data-v="' + (from + k) + '"><img loading="lazy" alt="" src="' + esc(mediaUrl(sh.path)) + '"><span>' + esc(sh.name) + '</span></button>';
+    }).join('');
+    [].forEach.call(grid.querySelectorAll('img'), function (im) {
+      im.addEventListener('error', function () { im.parentNode.classList.add('bad'); self.galBad = (self.galBad || 0) + 1; self.renderGalleryNote(); });
+    });
+    pg.innerHTML = pages > 1 ? '<button class="txl-btn" data-act="galPage" data-v="' + (this.galPage - 1) + '"' + (this.galPage ? '' : ' disabled') + '>\u2039 NEWER</button><span>' + (this.galPage + 1) + ' / ' + pages + '</span><button class="txl-btn" data-act="galPage" data-v="' + (this.galPage + 1) + '"' + (this.galPage < pages - 1 ? '' : ' disabled') + '>OLDER \u203a</button>' : '';
+    this.renderGalleryNote();
+  };
+  // pictures the screen can't open (an older game, a file being written): said once, with the folder button
+  P.renderGalleryNote = function () {
+    var el = this.el.gal;
+    if (!el) return;
+    var n = el.querySelector('.g-note');
+    if (this.galBad && !n) { n = document.createElement('div'); n.className = 'g-note'; n.textContent = 'Some screenshots can\u2019t be shown here: OPEN FOLDER shows them all.'; el.appendChild(n); }
+    if (!this.galBad && n) n.parentNode.removeChild(n);
+  };
+  P.galShow = function (i) {
+    var v = this.el.galView, shots = this.galData ? arr(this.galData.shots) : [];
+    if (!v) return;
+    if (!(i >= 0 && i < shots.length)) { this.galIdx = -1; this.root.setAttribute('data-galview', '0'); return; }
+    this.galIdx = i;
+    v.querySelector('img').src = mediaUrl(shots[i].path);
+    v.querySelector('.gv-n').textContent = shots[i].name + '  \u00b7  ' + (i + 1) + ' / ' + shots.length;
+    this.root.setAttribute('data-galview', '1');
+  };
+
   // ---------------------------------------------------------------- race passing alerts (v3.3)
   // Is this copy really on screen? (in the layout, a size, not hidden by the game or by the vehicle's-screen mode, on)
   P.passVisible = function () {
@@ -4036,7 +4151,7 @@
   };
 
   // ---------------------------------------------------------------- Angular glue
-  var HOOKS = [EV + 'pass', EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
+  var HOOKS = [EV + 'pass', EV + 'gallery', EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
     EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login', EV + 'dashState'];
   TreadXLApp.HOOKS = HOOKS;
 

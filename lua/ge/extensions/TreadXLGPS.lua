@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.3'
+local VERSION = '3.4'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -3039,6 +3039,15 @@ function M.requestMedia()
   })
 end
 
+-- v3.4: the Gallery: BeamNG's own screenshots (the user folder's screenshots/), newest first, for the gallery view
+function M.requestGallery()
+  local list = MEDIA.list('/screenshots', { png = true, jpg = true, jpeg = true })
+  table.sort(list, function(a, b) return a.file:lower() > b.file:lower() end) -- (the game names them by date and time)
+  local shots = {}
+  for i = 1, math.min(#list, 500) do shots[i] = { name = list[i].name, path = list[i].path } end
+  trigger('gallery', { shots = shots, total = #list, real = realPath('/screenshots') })
+end
+
 -- the PASTE button: the text on the computer's clipboard
 function M.readClipboard()
   local ok, txt = pcall(function() return getClipboard and getClipboard() end)
@@ -4431,7 +4440,7 @@ end
 function D.state() trigger('dashState', { on = D.on, screen = D.tag ~= nil }) end
 -- every event the HUD app gets goes to the screen too (as ['TreadXLGPS.name', data])
 -- not for the screen: the unit's keys and one-off replies (the screen copy would act on them a second time: music, videos)
-D.SKIP = { dashState = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
+D.SKIP = { dashState = true, gallery = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
 M._dashFwd = function(name, data)
   if not (D.on and D.tag) or D.SKIP[name] then return end
   -- positions: 5 a second is plenty for the car's screen, and it can't fall behind (v3.3)

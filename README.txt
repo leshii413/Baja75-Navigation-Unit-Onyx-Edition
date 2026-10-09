@@ -39,6 +39,9 @@ server's courses are also sent to the server automatically ("Result sent to the 
 HOME (first button under the screen): home screen with Music, Video, Maps, Settings, Gallery. Themes: MENU > Display >
 Screen > Theme, then the power button to apply (Full: all; Adventure: Overland; Chase: Desert Racing, Rock Crawling;
 Rally: Rally; Track: JDM, Drift; Anime in every edition but Onyx).
+v3.4 (every edition but Free / Common): Clean map and hideable map buttons / data boxes / speed / scale (MENU > Display >
+On the map; tap the map to see hidden buttons), drag the small map in video mode, music bar (bottom / top / left / right),
+music in split screen in every mode, HOME > Gallery shows your screenshots (tap one for full screen).
 Pass requests (every edition but Onyx): during a race, PASS (or its key) asks every driver within 100 m to let you by;
 their unit or Alerts app shows the request with OK TO PASS / Dismiss. On BeamMP the server needs the Server Race Alerts
 plugin (its README: b75race start / end); single player uses the cars around you (AI cars don't yield by themselves).
