@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.2'
+local VERSION = '3.3'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -3551,6 +3551,12 @@ function M.actionRecord()
 end
 
 -- ------------------------------------------------------------------ hooks
+M._hudq = { seq = 0, ack = 0, ackAt = nil, sentAt = -99 } -- (v3.3: see tick; in M: the main chunk is at Lua's 200-local limit)
+function M.hudAck(n)
+  local q = M._hudq
+  n = tonumber(n)
+  if n and n <= q.seq and n >= q.ack then q.ack, q.ackAt = n, clock end
+end
 local function tick()
   local s = sampleVehicle(playerVehicle(), me and me.heading)
   if s then
@@ -3563,7 +3569,18 @@ local function tick()
     if rec then addRecPoint(s.x, s.y, s.z) end
   end
   me = s
-  trigger('hud', buildHud())
+  -- v3.3: the screen says which position it drew last; if it falls 3 or more behind (a slow UI), positions wait for
+  -- it instead of queueing up (the map would trail the car by seconds). No answers at all (the unit not open, or an
+  -- older screen): sent as always. Every second one goes anyway (the Alerts / Pacenotes apps read them too).
+  local q = M._hudq
+  q.seq = q.seq + 1
+  local behind = q.ackAt and clock - q.ackAt < 2 and q.seq - q.ack > 3
+  if not behind or clock - q.sentAt >= 1 then
+    local h = buildHud()
+    h.seq = q.seq
+    q.sentAt = clock
+    trigger('hud', h)
+  end
   Dmg.tick()
   Snap.tick()
   if M._dash then M._dash.tick() end
@@ -3576,6 +3593,7 @@ function M.onUpdate(dtReal, dtSim)
   if M._lock then M._lock.check() end -- joined / left a Baja75 server: the screen is told
   clock = clock + dtReal
   if M._dash then pcall(M._dash.frame) end -- v3.2: a click on the dash pops the unit up
+  if M._pass then local okp, e = pcall(M._pass.update); if not okp then log_('E', 'pass alerts: ' .. tostring(e)) end end -- v3.3
   raceClock = raceClock + (tonumber(dtSim) or dtReal)
   if PN then PN.update(clock) end
   hudTimer = hudTimer + dtReal
@@ -3609,6 +3627,7 @@ function M.onClientPostStartMission()
   sendChaseTargets()
   baseMapCache = { level = nil, data = nil }
   trigger('cmd', { cmd = 'mapChanged' })
+  if M._pass then M._pass.mapChanged() end -- v3.3: no pass alerts from the last map
 end
 
 function M.onWorldReadyState(state)
@@ -3627,10 +3646,12 @@ end
 
 function M.onVehicleDestroyed(id)
   if chase.id and id == chase.id then chase.snap = nil end
+  if M._pass then M._pass.vehicleGone(id) end
 end
 
 -- resets (the game's vehicle reset, e.g. R / Home) and recoveries (Insert) during a timed run
 function M.onVehicleResetted(vid)
+  if M._pass then M._pass.vehicleGone(vid) end -- v3.3: a single-player request from a reset vehicle ends
   local pv = playerVehicle()
   local ok, pid = pcall(function() return pv and pv:getID() end)
   if not ok or not pid or vid ~= pid then return end
@@ -4413,6 +4434,11 @@ function D.state() trigger('dashState', { on = D.on, screen = D.tag ~= nil }) en
 D.SKIP = { dashState = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
 M._dashFwd = function(name, data)
   if not (D.on and D.tag) or D.SKIP[name] then return end
+  -- positions: 5 a second is plenty for the car's screen, and it can't fall behind (v3.3)
+  if name == 'hud' then
+    if D.hudAt and clock - D.hudAt < 0.19 then return end
+    D.hudAt = clock
+  end
   local ok, js = pcall(jsonEncode, { EV .. name, data })
   if ok and js then D.send('window.txlDash && txlDash(' .. js .. ')') end
 end
@@ -4486,6 +4512,125 @@ M.dashSync = function(json)
 end
 M.actionPopup = function() trigger('cmd', { cmd = 'popup' }) end
 M._dash = D
+end)() end
+
+
+-- ---------------------------------------------------------------- race passing alerts (v3.3)
+-- PASS (or its key) during a race asks every driver within 100 m to let you by; their unit or Alerts app shows it.
+-- The logic is in TreadXLGPS/pass.lua (one controller for both screens); here it gets the game, the screens and
+-- BeamMP. On a BeamMP server the server plugin Baja75RaceAlerts picks who gets it. Not in the Onyx Edition.
+do (function()
+local ok, PASS = pcall(require, '/lua/ge/extensions/TreadXLGPS/pass')
+if not ok or type(PASS) ~= 'table' then log_('E', 'pass alerts module not loaded: ' .. tostring(PASS)); return end
+local function vpos(v)
+  if not v then return nil end
+  local okp, p = pcall(function() return v:getPosition() end)
+  if okp and p then return { x = p.x, y = p.y, z = p.z } end
+  return nil
+end
+local function myPid()
+  local okc, id = pcall(function() return MPConfig.getPlayerServerID() end)
+  return okc and tonumber(id) or nil
+end
+local function gameIdOf(serverVid)
+  local pid = myPid()
+  if not pid or pid < 0 then return nil end
+  local okg, gid = pcall(function() return MPVehicleGE.getGameVehicleID(pid .. '-' .. tostring(serverVid)) end)
+  gid = okg and tonumber(gid) or nil
+  return (gid and gid >= 0) and gid or nil
+end
+local function pvId()
+  local pv = playerVehicle()
+  local id = nil
+  if pv then pcall(function() id = pv:getID() end) end
+  return id
+end
+PASS.init({
+  now = function() return clock end,
+  edition = function() return PNK.EDITION end,
+  isMP = function()
+    local okm, mp = pcall(function() return MPCoreNetwork.isMPSession() end)
+    return okm and mp == true and type(TriggerServerEvent) == 'function'
+  end,
+  localRaceRunning = function() return race ~= nil and race.state == 'running' end,
+  cefVisible = function()
+    if ui_visibility and ui_visibility.getCef then return ui_visibility.getCef() end
+    return true
+  end,
+  -- the unit on the car's own screen counts only while you can see it: from the driver's seat
+  dashVisible = function()
+    if not (M._dash ~= nil and M._dash.on == true and M._dash.tag ~= nil) then return false end
+    local okc, cam = pcall(function() return core_camera.getActiveCamName() end)
+    return okc and cam == 'driver'
+  end,
+  encode = jsonEncode, decode = jsonDecode,
+  send = function(name, js)
+    local oks = pcall(function() TriggerServerEvent(name, js) end)
+    return oks
+  end,
+  addHandlers = function()
+    if type(AddEventHandler) ~= 'function' then return end
+    for ev, fn in pairs({ B75Pass_State = PASS.onState, B75Pass_Alert = PASS.onAlert, B75Pass_Result = PASS.onResult,
+      B75Pass_Response = PASS.onResponse, B75Pass_Clear = PASS.onClear }) do
+      pcall(AddEventHandler, ev, fn, 'TreadXLGPS_pass') -- the same id: a second call replaces, never doubles
+    end
+  end,
+  ui = function(data) trigger('pass', data) end,
+  toast = function(text, level) toast(text, level) end,
+  chime = function() playSfx('event:>UI>Missions>Info_Open', 0.9) end,
+  hook = function(name, data) if extensions and extensions.hook then pcall(extensions.hook, name, data) end end,
+  log = log_,
+  playerVehicleId = pvId,
+  vehiclePos = function(id) return vpos(getObjectByID and getObjectByID(id) or nil) end,
+  -- every vehicle in the world but props (cones, barriers... and the walking player)
+  vehicleIds = function()
+    local out = {}
+    local okAll, all = pcall(function() return getAllVehicles and getAllVehicles() or {} end)
+    if not okAll or type(all) ~= 'table' then return out end
+    for _, v in ipairs(all) do
+      local okId, id = pcall(function() return v:getID() end)
+      if okId and id then
+        local _, model = vehicleInfo(id, v)
+        if not PROP_JBEAMS[model or ''] then out[#out + 1] = id end
+      end
+    end
+    return out
+  end,
+  -- BeamMP: my vehicle's server id (the number after "pid-"), and names for mine in an alert
+  ownServerVehicleId = function()
+    local gid = pvId()
+    if not gid then return nil end
+    local oko, own = pcall(function() return MPVehicleGE.isOwn(gid) end)
+    if not (oko and own) then return nil end
+    local oks, sid = pcall(function() return MPVehicleGE.getServerVehicleID(gid) end)
+    local v = oks and type(sid) == 'string' and sid:match('^%d+%-(%d+)$')
+    return v and tonumber(v) or nil
+  end,
+  isCurrentOwn = function(serverVid) local gid = gameIdOf(serverVid); return gid ~= nil and gid == pvId() end,
+  ownVehicleLabel = function(serverVid)
+    local gid = gameIdOf(serverVid)
+    if not gid then return nil end
+    local okv, mv = pcall(function() return MPVehicleGE.getVehicleByGameID(gid) end)
+    local name = okv and type(mv) == 'table' and (mv.jbeam or mv.name) or nil
+    return name and tostring(name):sub(1, 30) or nil
+  end,
+})
+M._pass = PASS
+-- from the screens: each copy says whether it is visible (about once a second), and the buttons
+M.passPresence = function(handle, kind, visible) PASS.presence(handle, kind, visible) end
+M.passGone = function(handle, kind) PASS.presence(handle, kind, nil) end
+M.passRequest = function() PASS.request() end
+M.passAck = function(id) PASS.ack(tostring(id or '')) end
+M.passDismiss = function(id) PASS.dismiss(tostring(id or '')) end
+M.passShown = function(id) PASS.shown(tostring(id or '')) end
+-- the keys (Options > Controls)
+M.actionPassRequest = function() PASS.request() end
+M.actionPassOk = function() PASS.ackNewest() end
+-- for scenario / race scripts (single player): a vehicle (AI) asks the player to let it by
+M.passRequestFrom = function(vehId, name, number) return PASS.requestFrom(tonumber(vehId), name, number) end
+-- development only: a labelled test alert on the visible screen (console: TreadXLGPS.passTest())
+M.passTest = function() return PASS.test() end
+M.onBeamMPServerLeave = function() PASS.leaveMp() end
 end)() end
 
 

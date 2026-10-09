@@ -178,5 +178,23 @@
     "isBasic": true,
     "title": "Baja75 Navigation Unit: Full screen video",
     "desc": "Video full screen: the whole GPS screen, or the whole split side when split screen is on"
+  },
+  "TreadXLGPS_passRequest": {
+    "cat": "gameplay",
+    "order": 830,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS and TreadXLGPS.actionPassRequest then TreadXLGPS.actionPassRequest() end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: Request a pass",
+    "desc": "During a race: asks every driver within 100 m to let you pass (their unit or Alerts app shows it)"
+  },
+  "TreadXLGPS_passOk": {
+    "cat": "gameplay",
+    "order": 831,
+    "ctx": "tlua",
+    "onDown": "if TreadXLGPS and TreadXLGPS.actionPassOk then TreadXLGPS.actionPassOk() end",
+    "isBasic": true,
+    "title": "Baja75 Navigation Unit: OK to pass",
+    "desc": "Answers the newest pass request with OK TO PASS"
   }
 }

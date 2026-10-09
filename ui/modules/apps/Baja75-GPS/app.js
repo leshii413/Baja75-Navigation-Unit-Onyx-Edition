@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.2';
+  var VERSION = '3.3';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -40,7 +40,7 @@
   // the Onyx Edition: road and overland exploration in a metallic black unit; no races, Chase Map or unlocking
   var ONYX = EDITION === 'onyx';
   var ONYX_KINDS = { hazard: 1, danger: 1, medic: 1, note: 1, turn: 1 }; // what it marks (no race symbols)
-  var ONYX_OFF = { raceGo: 1, raceRoute: 1, chase: 1, autoPn: 1, clearAutoPn: 1, serverPack: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, vidRecent: 1, siteCheck: 1, videoUnblock: 1, keyOpen: 1, unlockGo: 1 };
+  var ONYX_OFF = { passReq: 1, passOk: 1, passDismiss: 1, raceGo: 1, raceRoute: 1, chase: 1, autoPn: 1, clearAutoPn: 1, serverPack: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, vidRecent: 1, siteCheck: 1, videoUnblock: 1, keyOpen: 1, unlockGo: 1 };
   // the free Common Edition: all four modes with the map, music, course import, Times, racing and 2 courses of your own;
   // no video, marking, waypoint / pacenote writing, Chase Map or sharing out (the game script refuses those too)
   var COMMON = EDITION === 'common' || EDITION === 'free'; // the free editions: no password (keys only), Adventure first
@@ -93,7 +93,7 @@
     courseColor: '#e8178a', sharpTurns: true, autoZoom: true, zoom: 0.8, showOthers: true, othersNames: true,
     chaseInterval: 0, markIcon: 'Tread_XL_icon_checkpoint.svg', markLabel: '', markLimit: 35, mapOpacity: 1,
     clockSource: 'pc', darkMode: ONYX ? 'on' : 'off', chipVcp: true, chipPit: true, sound: true, chimeVol: 0.6, // (the Onyx Edition starts on the night map)
-    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true,
+    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, // passBtn: v3.3
     markMode: 'symbols', pnDraft: { d: 1, c: 'three', len: '', sh: '', ca: 0, m: [] }, pnBar: true,
     pnCalls: 'on', pnLead: 'normal', pnVoice: '', pnNative: true, offCourseM: 15, damageLog: true, snapStyle: 'map',
     mode: COMMON ? 'adventure' : 'chase', commonPreset: 0, modeFields: {}, split: false, display: 'gps', lastMedia: 'music', videoScreen: true, musicScreen: true, vidPip: 'br', musStyle: 'split', musPip: 'br',
@@ -244,6 +244,7 @@
     chase: '<svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="9" cy="9" r="2.6" fill="#fff"/><path d="M9 0v3.2M9 14.8V18M0 9h3.2M14.8 9H18" stroke="#fff" stroke-width="1.8"/></svg>',
     rec: '<svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="7.2" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="9" cy="9" r="4.2" fill="#ff3b30"/></svg>',
     stop: '<svg viewBox="0 0 18 18"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="#fff"/></svg>',
+    pass: '<svg viewBox="0 0 18 18"><path d="M3 4.5 7.5 9 3 13.5M9 4.5 13.5 9 9 13.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     lock: '<svg viewBox="0 0 24 28"><path d="M6.5 12V8a5.5 5.5 0 0 1 11 0v4" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><rect x="2" y="12" width="20" height="15" rx="3" fill="#ff6a13"/><circle cx="12" cy="18.6" r="2.1" fill="#111"/><path d="M12 19.5v3.6" stroke="#111" stroke-width="2" stroke-linecap="round"/></svg>',
     center: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#fff" stroke-width="2"/><circle cx="10" cy="10" r="2.2" fill="#fff"/><path d="M10 0v4M10 16v4M0 10h4M16 10h4" stroke="#fff" stroke-width="2"/></svg>',
     needle: '<svg viewBox="0 0 26 26"><path d="M13 2 17.5 13h-9z" fill="#ff3b30"/><path d="M13 24 8.5 13h9z" fill="#e8e8e8"/><circle cx="13" cy="13" r="1.6" fill="#111"/></svg>',
@@ -624,6 +625,10 @@
     this.raf = window.requestAnimationFrame(this.loop);
     var self = this;
     this.clockTimer = setInterval(function () { self.renderStatus(); }, 5000);
+    // v3.3: pass alerts go to the screens that are visible: this one says so every second
+    this.passHandle = 'nav-' + Math.random().toString(36).slice(2, 10);
+    this.passShownIds = {}; this.passShownN = 0;
+    if (!this.isDash && !ONYX) this.passTimer = setInterval(function () { self.passReport(); }, 1000);
     this.lua('if not TreadXLGPS then extensions.load("TreadXLGPS") end');
     this.lua('if TreadXLGPS and TreadXLGPS.setSound then TreadXLGPS.setSound(' + (this.s.sound ? 'true' : 'false') + ') end');
     this.pushPacenoteOptions();
@@ -707,6 +712,7 @@
       '  </div>',
       '  <div class="txl-actions">',
       '   <button class="txl-abtn racebtn hidden" data-act="raceGo" title="Race this route"></button>',
+      '   <button class="txl-abtn passbtn hidden" data-act="passReq" title="Ask the drivers within 100 m to let you pass">' + G.pass + '<span>PASS</span></button>',
       '   <button class="txl-abtn recbtn" data-act="recToggle" title="Start / stop recording a course"></button>',
       '   <button class="txl-abtn mark" data-act="mark">' + G.mark + '<span>MARK</span></button>',
       '   <button class="txl-abtn undo" data-act="undoMark" title="Remove the last waypoint marked on this recording">' + G.undo + '<span>UNDO</span></button>',
@@ -748,6 +754,7 @@
         [['music', 'Music', G.hMusic], ['video', 'Video', G.hVideo], ['maps', 'Maps', G.hMaps], ['settings', 'Settings', G.hSettings], ['gallery', 'Gallery', G.hGallery]].map(function (t) {
           return '<button class="h-tile" data-act="homeGo" data-v="' + t[0] + '"><i>' + t[2] + '</i><span>' + t[1] + '</span></button>';
         }).join('') + '</div>' + (ONYX ? '<img class="h-gem" src="' + APP_DIR + 'onyx/gem.svg" alt="">' : '') + '</div>'),
+      '  <div class="txl-pass" aria-live="polite"></div>',
       '  <div class="txl-nudge"><div class="n-t">Access to other features requires the product key to unlock it.</div><div class="n-s">Contact Baja75 on Patreon for assistance.</div><div class="n-b"><button class="txl-btn primary" data-act="nudgeKey">ENTER KEY</button><button class="txl-btn" data-act="nudgeClose">OK</button></div></div>',
       '  <div class="txl-dead"><div class="d-t">This unit is disabled</div><div class="d-s">Contact Baja75 Support to unlock it. Take a screenshot of this screen and send it with your request.</div>' + '<button class="txl-btn primary" data-act="keyOpen">ENTER KEY</button></div>',
       '  <div class="txl-boot show"><div class="b-logo"><img src="' + APP_DIR + (ONYX ? 'onyx/logo.svg' : 'logo.png') + '" alt="' + (ONYX ? 'Onyx Edition' : 'Baja75 Navigation Unit') + '"></div><div class="b-sub">10\u2033 ' + (ONYX ? 'OVERLAND' : 'OFF-ROAD') + ' NAVIGATOR' + (EDITION_NAME ? ' \u00b7 ' + EDITION_NAME.toUpperCase() : '') + '</div><div class="b-bar"><i></i></div><div class="b-txt">Loading map\u2026</div><div class="b-info"></div></div>',
@@ -777,7 +784,7 @@
       limit: q('.txl-limit'), scale: q('.txl-scale'), orient: q('.orient'), center: q('[data-act="center"]'),
       chaseBtn: q('[data-act="chase"]'), recBtn: q('[data-act="recToggle"]'), toast: q('.txl-toast'), banner: q('.txl-banner'),
       chips: q('.txl-chips'), pnbar: q('.txl-pnbar'), count: q('.txl-count'), result: q('.txl-result'), boot: q('.txl-boot'), raceBtn: q('[data-act="raceGo"]'),
-      actions: q('.txl-actions'), media: q('.txl-media'), brandTag: q('.txl-brand b'), mbar: q('.txl-mbar'),
+      actions: q('.txl-actions'), media: q('.txl-media'), pass: q('.txl-pass'), passBtn: q('[data-act="passReq"]'), brandTag: q('.txl-brand b'), mbar: q('.txl-mbar'),
       sheets: { menu: q('[data-sheet="menu"]'), mark: q('[data-sheet="mark"]'), chase: q('[data-sheet="chase"]'), unlock: q('[data-sheet="unlock"]'), notice: q('[data-sheet="notice"]'), login: q('[data-sheet="login"]') }
     };
     // stylesheet (legacy apps don't load app.css on their own in every game version)
@@ -1010,6 +1017,29 @@
   };
 
   // ---------------------------------------------------------------- events from Lua / the game
+  // the game script sends the position 10 times a second; if this screen falls behind, older ones are skipped (only
+  // the newest is drawn), and each drawn one is acknowledged so the game script can wait instead of piling them up
+  P.queueHud = function (d) {
+    this.hudPending = d;
+    this.hudHas = true;
+    if (this.hudRafId) return;
+    var self = this, done = false;
+    var flush = function () {
+      if (done) return;
+      done = true; self.hudRafId = 0; clearTimeout(self.hudTo);
+      self.flushHud();
+    };
+    this.hudRafId = window.requestAnimationFrame ? window.requestAnimationFrame(flush) : 1;
+    this.hudTo = setTimeout(flush, 120); // (no frames while the game window is in the background)
+  };
+  P.flushHud = function () {
+    if (!this.hudHas || this.destroyed) return;
+    var d = this.hudPending;
+    this.hudPending = null; this.hudHas = false;
+    this.hudNow = true;
+    try { this.onEvent(EV + 'hud', d); } finally { this.hudNow = false; }
+    if (!this.isDash && d && typeof d.seq === 'number') this.lua('if TreadXLGPS and TreadXLGPS.hudAck then TreadXLGPS.hudAck(' + d.seq + ') end');
+  };
   P.onEvent = function (name, d) {
     if (this.destroyed) return;
     if (this.isDash && name === EV + 'cmd') return; // the vehicle's screen only shows: the keys act in the HUD unit
@@ -1110,7 +1140,10 @@
         break;
       }
       case EV + 'hud':
+        // v3.3: the newest position only, once per frame (a slow screen never builds up a queue of old positions)
+        if (!this.hudNow) { this.queueHud(d); break; }
         this.hud = d || null;
+        if (this.passData && arr(this.passData.alerts).length) this.renderPass(); // a danger alert puts the pass card lower
         if (this.hud && !this.hudSeen) { this.hudSeen = true; if (!this.hello && this.helloTries) this.renderBanner(); }
         if (this.hud) {
           this.hud.next = arr(this.hud.next); this.hud.marks = arr(this.hud.marks); this.hud.vcpStates = arr(this.hud.vcpStates);
@@ -1205,6 +1238,10 @@
       case EV + 'locked': if (d && d.what) this.guard(d.what === 'wpts' ? 'wpts' : String(d.what)); break;
       case EV + 'notice': if (d && d.text) { this.notice = d; this.openSheet('notice'); } break;
       case EV + 'login': this.openLogin(d && d.what); break;
+      case EV + 'pass': // v3.3: race passing alerts (the PASS button, the incoming request card)
+        this.passData = d || null;
+        this.renderPass();
+        break;
       case EV + 'dashState': // v3.2: the game script says whether the unit is on this car's screen
         this.dashScreen = !!(d && d.on && d.screen);
         this.root.setAttribute('data-dashscreen', this.dashScreen ? '1' : '0');
@@ -1381,6 +1418,9 @@
       case 'keyOpen': this.unlockFor = { what: null }; this.unlockText = ''; this.openSheet('unlock'); break;
       case 'noticeOk': this.notice = null; this.openSheet(null); break;
       case 'popClose': this.togglePop(false); break;
+      case 'passReq': this.call('passRequest'); break;
+      case 'passOk': if (v) this.call('passAck', luaStr(v)); break;
+      case 'passDismiss': if (v) this.call('passDismiss', luaStr(v)); break;
       case 'loginGo': {
         var lsh = this.el.sheets.login, lbox = lsh.querySelector('[data-in="loginName"]'), nbox = lsh.querySelector('[data-in="loginNum"]');
         var lname = cleanDriver(lbox ? lbox.value : this.loginName, 40).replace(/\s+$/, ''), lnum = cleanDriver(nbox ? nbox.value : this.loginNum, 8).replace(/\s+$/, '');
@@ -1574,7 +1614,7 @@
       case 'recDiscard': this.call('stopRecording', 'true'); break;
       case 'set': {
         var k = el.getAttribute('data-k');
-        if (isFree() && k !== 'themeNext' && k !== 'dash') { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume, the key box, the theme and the vehicle's screen can)
+        if (isFree() && k !== 'themeNext' && k !== 'dash' && k !== 'passBtn') { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume, the key box, the theme and the vehicle's screen can)
         if (k === 'units') this.s.units = v;
         else if (k === 'northUp') this.s.northUp = v === '1';
         else if (k === 'bezel') this.s.bezel = v === '1';
@@ -1593,6 +1633,7 @@
         else if (k === 'alertsOnGps') this.s.alertsOnGps = v === '1';
         else if (k === 'alertsMode') this.s.alertsMode = v;
         else if (k === 'alertsFlash') this.s.alertsFlash = v === '1';
+        else if (k === 'passBtn') { this.s.passBtn = v === '1'; this.renderPass(); }
         else if (k === 'chimeVol') this.s.chimeVol = Math.max(0, Math.min(1, Number(v) || 0));
         else if (k === 'sound') { this.s.sound = v === '1'; this.call('setSound', this.s.sound ? 'true' : 'false'); }
         else if (k === 'pnCalls' || k === 'pnLead' || k === 'pnVoice') { this.s[k] = v; if (k === 'pnVoice' && this.pnInfo) this.pnInfo.voice = v; this.pushPacenoteOptions(); }
@@ -1813,7 +1854,7 @@
       (race.state === 'running' ? '' : race.state === 'countdown' ? ' \u00b7 GET READY' : race.state === 'finished' ? ' \u00b7 FINISHED' : ' \u00b7 TO THE START');
     else if (this.course) mode = (this.course.source === 'server' ? 'SERVER \u00b7 ' : this.course.source === 'rally' ? 'RALLY \u00b7 ' : '') + '<b>' + esc(dispName(this.course.name)) + '</b>';
     else mode = '';
-    mode = '<span class="txl-mtag' + (mode ? '' : ' solo') + '">' + mdS.name + ' MODE</span>' + mode;
+    if (!ONYX) mode = '<span class="txl-mtag' + (mode ? '' : ' solo') + '">' + mdS.name + ' MODE</span>' + mode; // (the Onyx Edition: one mode, no tag; v3.3)
     this.setHtml('mode', this.el.mode, mode);
     var icons = '';
     if (h.chase) icons += '<span class="txl-chasetag">' + esc(h.chase.lost ? 'LOST' : (h.chase.name || '')) + '</span>';
@@ -2622,7 +2663,8 @@
           seg('offCourseM', this.s.offCourseM, [[15, '15 M'], [30, '30 M'], [60, '60 M']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Alerts on the GPS screen</div><div class="t2">Hide them here if you use the separate Alerts app</div></div>' + seg('alertsOnGps', this.s.alertsOnGps ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Alerts app shows</div><div class="t2">Faults = wrong way, off course, over the limit, missed VCP, jump start</div></div>' + seg('alertsMode', this.s.alertsMode, [['faults', 'FAULTS'], ['all', 'ALL ALERTS']]) + '</div>' +
-        '<div class="txl-row"><div class="grow"><div class="t1">Flashing warnings</div><div class="t2">In the Alerts app</div></div>' + seg('alertsFlash', this.s.alertsFlash ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div></div>' +
+        '<div class="txl-row"><div class="grow"><div class="t1">Flashing warnings</div><div class="t2">In the Alerts app</div></div>' + seg('alertsFlash', this.s.alertsFlash ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
+        (ONYX ? '' : '<div class="txl-row"><div class="grow"><div class="t1">PASS button</div><div class="t2">During a race. Hidden, its key still works (Options \u203a Controls)</div></div>' + seg('passBtn', this.s.passBtn ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>') + '</div>' +
         '<div class="txl-sec"><h3>Run log</h3>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Damage log</div><div class="t2">Timed runs also list the parts damaged in each crash (MENU \u203a Times and race_log.txt)</div></div>' + seg('damageLog', this.s.damageLog ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div></div>' +
         '<div class="txl-sec"><h3>Modes &amp; screens</h3>' +
@@ -3375,7 +3417,7 @@
     if (this.sheet === 'menu') this.renderSheet();
   };
   P.renderTrial = function () {
-    var el = this.el.trial, left = this.trialEnd ? Math.max(0, Math.floor((this.trialEnd - Date.now()) / 1000)) : null;
+    var el = this.el.trial, left = this.trialEnd && !ONYX ? Math.max(0, Math.floor((this.trialEnd - Date.now()) / 1000)) : null; // (no trial counter on the Onyx Edition; v3.3)
     if (left == null) { if (el.innerHTML) el.innerHTML = ''; el.classList.remove('show'); return; }
     var d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), sec = left % 60;
     var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
@@ -3911,6 +3953,64 @@
     }
   };
 
+  // ---------------------------------------------------------------- race passing alerts (v3.3)
+  // Is this copy really on screen? (in the layout, a size, not hidden by the game or by the vehicle's-screen mode, on)
+  P.passVisible = function () {
+    if (this.isDash || this.destroyed || ONYX) return false;
+    var r = this.root;
+    if (!r || !r.isConnected || document.hidden) return false;
+    if (r.getAttribute('data-off') === '1' || r.getAttribute('data-bsod') === '1' || r.getAttribute('data-dead') === '1') return false;
+    var b = r.getBoundingClientRect();
+    if (b.width < 40 || b.height < 30) return false;
+    var W = window.innerWidth || 0, H = window.innerHeight || 0;
+    if (W && H && (b.right <= 0 || b.bottom <= 0 || b.left >= W || b.top >= H)) return false;
+    for (var e = r; e && e.nodeType === 1; e = e.parentElement) {
+      var cs = window.getComputedStyle(e);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+    }
+    return true;
+  };
+  P.passReport = function () {
+    this.lua('if TreadXLGPS and TreadXLGPS.passPresence then TreadXLGPS.passPresence(' + luaStr(this.passHandle) + ', "nav", ' + (this.passVisible() ? 'true' : 'false') + ') end');
+  };
+  P.renderPass = function () {
+    var d = this.passData || {}, list = arr(d.alerts), b = d.btn || {};
+    // the PASS button (in the screen, next to END RACE; not a bezel button)
+    var pb = this.el.passBtn;
+    if (pb) {
+      var show = !!b.show && !ONYX && this.s.passBtn !== false;
+      pb.className = 'txl-abtn passbtn' + (show ? '' : ' hidden') + (show && !b.can ? ' wait' : '');
+      var lbl = b.cd ? 'PASS ' + b.cd + 's' : 'PASS';
+      var tip = b.why === 'unavailable' ? 'This server has no Baja75 race alerts' : b.why === 'connecting' ? 'Connecting to the server\u2019s race alerts' : 'Ask the drivers within 100 m to let you pass';
+      this.setHtml('passbtn', pb, G.pass + '<span>' + lbl + '</span>');
+      pb.title = tip;
+    }
+    // the incoming request: newest first, the others wait under "+N more"
+    var el = this.el.pass;
+    var on = d.surface === 'nav' && list.length > 0 && !ONYX;
+    var danger = !!(this.hud && this.hud.alert && (this.hud.alert.level === 'danger' || this.hud.alert.kind === 'dangerAhead'));
+    el.className = 'txl-pass' + (on ? ' show' : '') + (on && danger ? ' low' : '') + (on && list[0].test ? ' test' : '');
+    if (!on) { this.setHtml('pass', el, ''); return; }
+    var a = list[0], u = this.s.units;
+    var dd = typeof a.dist === 'number' ? fmtDist(a.dist, u) : null;
+    var vehs = arr(a.vehs).filter(function (x) { return x && x.label; }).map(function (x) { return x.label; });
+    var who = esc(a.name) + (a.num ? ' #' + esc(a.num) : '');
+    var pct = a.life ? Math.max(0, Math.min(100, 100 * a.left / a.life)) : 0;
+    var html = '<div class="p-h">' + (a.test ? '<b class="p-tag">TEST</b>' : '') + '<span>PASS REQUEST</span>' + (list.length > 1 ? '<i class="p-more">+' + (list.length - 1) + ' more</i>' : '') + '</div>' +
+      '<div class="p-w">' + who + ' is requesting a pass</div>' +
+      '<div class="p-d">' + (dd ? esc(dd.v + ' ' + dd.u) + ' away' : '') + (vehs.length ? (dd ? ' \u00b7 ' : '') + 'your ' + esc(vehs.join(', ')) : '') + '</div>' +
+      (this.isDash ? '<div class="p-k">OK TO PASS: your key (Options \u203a Controls)</div>'
+        : '<div class="p-b"><button class="txl-btn primary p-ok" data-act="passOk" data-v="' + esc(a.id) + '">OK TO PASS</button><button class="txl-btn p-x" data-act="passDismiss" data-v="' + esc(a.id) + '">Dismiss</button></div>') +
+      '<i class="p-bar"><b style="width:' + pct.toFixed(1) + '%"></b></i>';
+    this.setHtml('pass', el, html);
+    // a receipt for the requester once it is really on screen here (seen is not OK TO PASS)
+    if (!this.isDash && !this.passShownIds[a.id] && this.passVisible()) {
+      if (++this.passShownN > 200) { this.passShownIds = {}; this.passShownN = 1; } // (kept small: the game script dedups too)
+      this.passShownIds[a.id] = true;
+      this.call('passShown', luaStr(a.id));
+    }
+  };
+
   // ---------------------------------------------------------------- teardown
   P.destroy = function () {
     this.destroyed = true;
@@ -3925,6 +4025,8 @@
     clearTimeout(this.restartTimer);
     clearInterval(this.trialTimer);
     clearTimeout(this.nudgeTimer);
+    clearInterval(this.passTimer);
+    if (this.passTimer) this.lua('if TreadXLGPS and TreadXLGPS.passGone then TreadXLGPS.passGone(' + luaStr(this.passHandle) + ', "nav") end');
     try { window.removeEventListener('message', this.onMsg); } catch (_) { }
     try { if (this.onCsp) document.removeEventListener('securitypolicyviolation', this.onCsp); } catch (_) { }
     try { this.videoStop(); if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); } } catch (_) { }
@@ -3934,7 +4036,7 @@
   };
 
   // ---------------------------------------------------------------- Angular glue
-  var HOOKS = [EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
+  var HOOKS = [EV + 'pass', EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
     EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login', EV + 'dashState'];
   TreadXLApp.HOOKS = HOOKS;
 

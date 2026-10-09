@@ -218,6 +218,17 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## Pass requests during a race (v3.3)
+
+Every edition that can race a course (all but Onyx) has **PASS** next to END RACE while a race is running, and a key for it (Options → Controls → *Baja75 Navigation Unit: Request a pass*).
+
+- **PASS** asks every other driver within **100 m** of your vehicle (3D distance, in any direction) to let you by. Their unit shows **PASS REQUEST - <your name> is requesting a pass**, with **OK TO PASS** and **Dismiss**, on whatever screen it's on (map, home, music, video, menus). With only the **Alerts app** on screen, the request shows there instead.
+- You hear back: *Pass request sent to 2 drivers*, *Seen by ...*, *... OK TO PASS*, or *No other drivers within 100 m*. One request every 5 seconds; each one lasts 8 seconds.
+- Don't want the button? MENU → Display → Alerts → *PASS button* HIDE; the key still works.
+- **OK TO PASS** has its own key (*Baja75 Navigation Unit: OK to pass*, the newest request). It only answers; it never moves either car. Dismiss just closes the card.
+- **On a BeamMP server**, the server picks who gets it: install the **Server Race Alerts** zip (`Resources/Server/Baja75RaceAlerts`, see its README). Race control starts and ends the race there (`b75race start` / `end` in the console or `/b75race` in chat); requests only work while it runs. On a server without it, PASS says pass requests are off.
+- **Single player**: the same 100 m rule over the cars around you. AI cars don't have screens and don't yield on their own; scenario scripts get `onBaja75PassRequest` / `onBaja75PassAcknowledged` and can ask you to let an AI car by with `TreadXLGPS.passRequestFrom(vehicleId, name, number)`.
+
 ## On the vehicle's own screen (v3.2)
 
 Turn on MENU → Display → *Screen* → **On the vehicle's screen** and the unit moves onto the car's own navigation screen (the stock cars that have one, such as the ETK, Bolide or Vivace dash screens). The HUD app hides itself while it's there; a car without a navigation screen keeps the unit in the HUD and tells you so once.
