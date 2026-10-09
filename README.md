@@ -189,7 +189,7 @@ A third HUD app, **Baja75 Navigation Unit - Pacenotes**, pops up the rally pacen
 
 ## Unlocking and licenses
 
-On a Baja75 or Leshii413 server every edition has every feature. Off the servers, enter a **password or license key** in MENU → Display → *License* (or when a locked part asks). A personal-use unlocking license for your own BeamNG can be bought from **Baja75 on Patreon**. If your license has a time limit, MENU → Display → *License* shows what's left. If the unit ever shows *This unit is disabled*, take a screenshot and send it to Baja75 Support.
+On a Baja75 or Leshii413 server every edition has every feature. Off the servers, enter a **password or license key** in MENU → Display → *License* (or when a locked part asks). A personal-use unlocking license for your own BeamNG can be bought from **Baja75 on Patreon**. If your license has a time limit, a countdown by the clock and MENU → Display → *License* show what's left. When your key runs out, contact **Baja75 on Patreon** for another key, with your proof of purchase, your trial access, or where you found the mod. If the unit ever shows *This unit is disabled*, take a screenshot and send it to Baja75 Support.
 
 The version and package letter sit next to **B75** on the case: **C** Chase, **R** Rally, **T** Track, **P** Public (Common), **F** Free; the full unit shows the version only.
 

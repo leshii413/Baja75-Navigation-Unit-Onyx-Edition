@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.1.7';
+  var VERSION = '3.1.8';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -719,12 +719,16 @@
       }).join('') + '</div>',
       ' <button class="txl-pwr" data-act="power" data-tip="Restart System" aria-label="Restart System">' + G.pwr + '</button>',
       ' <div class="txl-led"></div>',
+      ' <div class="txl-bsod"><div class="e-h">BAJA75 NAVIGATION UNIT</div><div class="e-p">A fatal exception has occurred and the navigation system has been halted to prevent damage to your saved courses.</div>' +
+      '<div class="e-p e-code">STOP: 0x000000B7 (0x00000047, 0x4E415653, 0x00000000, 0x00000000)<br>NAV_SYSTEM_INTEGRITY_FAULT</div>' +
+      '<div class="e-p">* Restarting the unit or the game will not clear this error.<br>* If this keeps happening, contact Baja75 on Patreon.</div>' +
+      '<div class="e-p e-dump">Collecting error data\u2026 100% complete</div></div>',
       '</div>'
     ].join('');
     var q = function (sel) { return r.querySelector(sel); };
     this.el = {
       device: q('.txl-device'), screen: q('.txl-screen'), map: q('.txl-map'), hint: q('.txl-maphint'),
-      clock: q('.txl-clock'), mode: q('.txl-modetxt'), icons: q('.txl-icons'), trial: q('.txl-trial'), dead: q('.txl-dead'), nudge: q('.txl-nudge'), home: q('.txl-home'),
+      clock: q('.txl-clock'), mode: q('.txl-modetxt'), icons: q('.txl-icons'), trial: q('.txl-trial'), dead: q('.txl-dead'), bootSub: q('.b-sub'), nudge: q('.txl-nudge'), home: q('.txl-home'),
       deck: q('.txl-deck'), fields: q('.txl-fields'), alert: q('.txl-alert'), speedbox: q('.txl-speedbox'),
       limit: q('.txl-limit'), scale: q('.txl-scale'), orient: q('.orient'), center: q('[data-act="center"]'),
       chaseBtn: q('[data-act="chase"]'), recBtn: q('[data-act="recToggle"]'), toast: q('.txl-toast'), banner: q('.txl-banner'),
@@ -1276,6 +1280,7 @@
     return null;
   };
   P.act = function (a, el) {
+    if (this.root.getAttribute('data-bsod') === '1') return; // the error screen: nothing works
     if (isCommon() && COMMON_OFF[a]) return; // not in the Common Edition (open on a Baja75 server)
     if (isFree() && FREE_OFF[a]) { this.nudge(); return; }
     if (ONYX && ONYX_OFF[a]) return; // not in the Onyx Edition
@@ -2758,6 +2763,7 @@
     this.toast(s.display === 'video' ? 'VIDEO' : s.display === 'music' ? 'MUSIC' : s.display === 'gauges' ? 'GAUGES' : 'MAP', 'info');
   };
   P.hwButton = function (n) {
+    if (this.root.getAttribute('data-bsod') === '1') return;
     var b = this.root.querySelector('.txl-hwb[data-v="' + n + '"]');
     if (b) { b.classList.add('pressed'); setTimeout(function () { b.classList.remove('pressed'); }, 160); }
     if (isFree() && (n === 1 || n === 2)) this.nudge();
@@ -3279,8 +3285,13 @@
   P.licenseChanged = function () {
     var a = this.access || {}, l = a.lic || {}, self = this;
     this.trialEnd = typeof l.cd === 'number' && !a.server ? Date.now() + l.cd * 1000 : null;
+    this.trialLabel = l.trial ? 'Trial Time Remaining' : 'Key Time Remaining'; // v3.1.8: every key with an end shows its countdown
     this.adminEnd = typeof a.admin === 'number' ? Date.now() + a.admin * 1000 : null;
     this.root.setAttribute('data-dead', l.dead && !a.server && !a.admin ? '1' : '0');
+    this.root.setAttribute('data-bsod', l.bsod && !a.server && !a.admin ? '1' : '0'); // (the game script already leaves it off there)
+    if (this.root.getAttribute('data-bsod') === '1') { this.openSheet(null); try { this.videoStop(); } catch (_) { } try { if (this.audio && !this.audio.paused) this.audio.pause(); } catch (_) { } }
+    // the power-on screen: the player's name in place of the edition's word once a named key went in ('LESHII413 EDITION')
+    if (this.el.bootSub && !ONYX) this.el.bootSub.textContent = '10\u2033 OFF-ROAD NAVIGATOR' + (l.name ? ' \u00b7 ' + String(l.name).toUpperCase() + ' EDITION' : EDITION_NAME ? ' \u00b7 ' + EDITION_NAME.toUpperCase() : '');
     clearInterval(this.trialTimer);
     if (this.trialEnd || this.adminEnd) this.trialTimer = setInterval(function () { self.renderTrial(); if (self.sheet === 'menu' && self.menuTab === 'display') self.renderSheet(); }, 1000);
     this.renderTrial();
@@ -3292,7 +3303,7 @@
     if (left == null) { if (el.innerHTML) el.innerHTML = ''; el.classList.remove('show'); return; }
     var d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), sec = left % 60;
     var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
-    this.setHtml('trial', el, '<span>Trial Time Remaining</span><b>' + d + ':' + p2(h) + ':' + p2(m) + ':' + p2(sec) + '</b>');
+    this.setHtml('trial', el, '<span>' + esc(this.trialLabel || 'Trial Time Remaining') + '</span><b>' + d + ':' + p2(h) + ':' + p2(m) + ':' + p2(sec) + '</b>');
     el.classList.add('show');
   };
   // Display: what's unlocked, and the key box
@@ -3309,7 +3320,8 @@
     else if (l.why === 'ended') st = 'Your key\u2019s time has run out: get the next key from Baja75 on Patreon';
     else st = 'Locked off the Baja75 servers' + (COMMON ? '' : ' (the password or a license key unlocks it)');
     return '<div class="txl-sec"><h3>License</h3><div class="txl-row"><div class="grow"><div class="t1">' + esc(st) + '</div><div class="t2">A personal-use unlocking license can be bought from Baja75 on Patreon</div></div>' +
-      (a.password ? btn('relock', 'LOCK') : '') + btn('keyOpen', 'ENTER KEY', 'blue') + '</div></div>';
+      (a.password ? btn('relock', 'LOCK') : '') + btn('keyOpen', 'ENTER KEY', 'blue') + '</div>' +
+      '<div class="txl-note">When your key runs out, contact <b>Baja75 on Patreon</b> for another key, with your proof of purchase, your trial access, or where you found the mod.</div></div>';
   };
   // the Free Edition: a short pop-up that other features need the product key
   P.nudge = function () {

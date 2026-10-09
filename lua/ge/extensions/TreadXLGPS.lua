@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.1.7'
+local VERSION = '3.1.8'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -3857,7 +3857,7 @@ end
 
 -- keys (see dev/): only digests here
 local LIC = {
-KEYS = { ['fe215850c7f2a9ba'] = 11, ['cbcca88d9adfc00e'] = 12, ['26f5da19535df449'] = 13, ['996f36e883e74cab'] = 14, ['76957a008d372672'] = 21, ['d2d82e797fdb8082'] = 22, ['418d4b568c3f493d'] = 23, ['b5d80f34ed96913c'] = 24, ['2c3370e52712d084'] = 31, ['de7a8a9ee61238e2'] = 32, ['5dc1cedb72c8c730'] = 33, ['5e9a50101075997b'] = 34, ['f51729b9a3ad96ea'] = 41, ['a336ced456380abe'] = 51 },
+KEYS = { ['fe215850c7f2a9ba'] = 11, ['cbcca88d9adfc00e'] = 12, ['26f5da19535df449'] = 13, ['996f36e883e74cab'] = 14, ['76957a008d372672'] = 21, ['d2d82e797fdb8082'] = 22, ['418d4b568c3f493d'] = 23, ['b5d80f34ed96913c'] = 24, ['2c3370e52712d084'] = 31, ['de7a8a9ee61238e2'] = 32, ['5dc1cedb72c8c730'] = 33, ['5e9a50101075997b'] = 34, ['f51729b9a3ad96ea'] = 41, ['a336ced456380abe'] = 51, ['21c41e55bea6c56a'] = 61, ['a8b4b3abd2474349'] = 62, ['e11777f06a1bb644'] = 63, ['921fea374cce9e7b'] = 64, ['8e65368c95871981'] = 71 },
 ADMIN = 'fc1190809ebc1abb',
   FILE = USER_ROOT .. '/cache/sys.dat', DAY = 86400, SALT = 'b75nu', st = nil, adminEnd = nil, adminUsed = false, last = nil,
 }
@@ -3868,8 +3868,25 @@ function LIC.gameVer()
   return v:match('^(%d+%.%d+)') or v
 end
 function LIC.sign(t)
-  return LOCK.digest(table.concat({ tostring(t.first), tostring(t.ser), tostring(t.stg), tostring(t.exp), tostring(t.l1), tostring(t.byp),
-    tostring(t.gv), tostring(t.dead), LIC.SALT }, '|'))
+  local parts = { tostring(t.first), tostring(t.ser), tostring(t.stg), tostring(t.exp), tostring(t.l1), tostring(t.byp),
+    tostring(t.gv), tostring(t.dead), LIC.SALT }
+  local ext = LIC.ext(t) -- v3.1.8 fields (key history, C / F keys, the BeamMP name): only signed when there are any,
+  if ext ~= '' then parts[#parts + 1] = ext end -- so a sys.dat from before stays valid
+  return LOCK.digest(table.concat(parts, '|'))
+end
+-- the v3.1.8 fields as one line, always in the same order
+function LIC.ext(t)
+  local function map(m)
+    if type(m) ~= 'table' then return '' end
+    local ks = {}
+    for k in pairs(m) do ks[#ks + 1] = tostring(k) end
+    table.sort(ks)
+    for i, k in ipairs(ks) do ks[i] = k .. '=' .. tostring(m[k] or m[tonumber(k)]) end
+    return table.concat(ks, ',')
+  end
+  local e = { map(t.hist), map(t.rem), tostring(t.named), tostring(t.only), tostring(t.fexp), tostring(t.fver), tostring(t.fdead), tostring(t.mpn) }
+  local s = table.concat(e, ';')
+  return s == ';;nil;nil;nil;nil;nil;nil' and '' or s
 end
 function LIC.save()
   local t = LIC.st
@@ -3892,6 +3909,10 @@ function LIC.load()
     return
   end
   LIC.st = t
+  if t.fver and t.fver ~= VERSION then -- that key's time ends with any new mod version (it stays used)
+    t.fexp, t.fver, t.fdead = nil, nil, nil
+    LIC.save()
+  end
   local gv = LIC.gameVer()
   if gv ~= '' and t.gv ~= gv then -- a new BeamNG.drive version: the time starts again
     local n = LIC.now()
@@ -3919,8 +3940,16 @@ function LIC.active()
   local n = LIC.now()
   if t.exp == -1 then return true end
   if t.exp and n < t.exp then return true end
+  if t.fexp and n < t.fexp then return true end
   if not t.ser and not LOCK.freeTier() and n < (t.first or n) + 30 * LIC.DAY then return true end
   return false
+end
+-- a 71 ran out: the error screen (until a new mod version; not on a Baja75 server or in the admin hour)
+function LIC.bsod()
+  local t = LIC.st
+  if not t or not t.fexp then return false end
+  if not t.fdead and LIC.now() >= t.fexp then t.fdead = true; LIC.save() end
+  return t.fdead == true and not LOCK.server and not LIC.adminOn()
 end
 function LIC.dead()
   local t = LIC.st
@@ -3932,15 +3961,33 @@ end
 function LIC.ui()
   local t = LIC.st or {}
   local n, on = LIC.now(), LIC.active()
-  local u = { on = on or nil, dead = LIC.dead() or nil }
-  if on and t.exp and t.exp ~= -1 then u.left = t.exp - n
-  elseif on and not t.ser and not t.byp and not t.l1 then u.left = (t.first or n) + 30 * LIC.DAY - n end
+  local u = { on = on or nil, dead = LIC.dead() or nil, bsod = LIC.bsod() or nil }
+  local fOn = t.fexp and n < t.fexp
+  if on and t.exp and t.exp ~= -1 and (n < t.exp or not fOn) then u.left = t.exp - n
+  elseif on and not t.ser and not t.byp and not t.l1 and not fOn then u.left = (t.first or n) + 30 * LIC.DAY - n end
   if on and (t.exp == -1 or t.byp) then u.life = true end
-  if on and t.ser == 3 and u.left then u.cd = u.left end
+  if on and t.ser and t.exp and t.exp ~= -1 and u.left then u.cd = u.left end
+  if u.cd and t.ser == 3 then u.trial = true end -- (the countdown's label) -- v3.1.8: a countdown for every key with an end (71 has none)
+  if t.named then u.name = LIC.who() end -- the name on the power-on screen
   if LIC.inMp() and not t.l1 and not t.byp then u.why = 'server'
   elseif not on and t.ser == 1 and t.stg == 4 then u.why = 'pack'
   elseif not on and t.ser then u.why = 'ended' end
   return u
+end
+-- the named key's name: the last BeamMP name (not a Guest) seen on this PC, else the unit's sign-in name; nil = the edition's word
+function LIC.who()
+  local t = LIC.st or {}
+  if type(t.mpn) == 'string' and t.mpn ~= '' then return t.mpn end
+  local L = LOCK.LOGIN
+  if L and L.applies() then local n = L.current(); if n then return n end end
+  return nil
+end
+-- a BeamMP name (not a Guest) is remembered on this PC (for the named key)
+function LIC.seeName()
+  local L, t = LOCK.LOGIN, LIC.st
+  if not (L and t) then return end
+  local nick = L.mpName()
+  if nick and nick ~= t.mpn then t.mpn = nick; LIC.save(); return true end
 end
 -- once a second (from LOCK.check): an unlock ran out, or a key's time came: the screen is told
 function LIC.tick(quiet)
@@ -3949,7 +3996,9 @@ function LIC.tick(quiet)
     log_('I', 'admin unlock ended (again after a game restart)')
     toast('Admin access ended', 'info')
   end
-  local now = (LOCK.unlocked() and 1 or 0) + (LIC.dead() and 2 or 0) + (LIC.adminOn() and 4 or 0)
+  local named = LIC.seeName() and LIC.st.named
+  local now = (LOCK.unlocked() and 1 or 0) + (LIC.dead() and 2 or 0) + (LIC.adminOn() and 4 or 0) + (LIC.bsod() and 8 or 0)
+  if named then LIC.last = -1 end -- a new name for the power-on screen
   if LIC.last ~= nil and now ~= LIC.last and not quiet then sendHello(false) end
   LIC.last = now
 end
@@ -3966,25 +4015,88 @@ function LIC.enter(text)
   local n = LIC.KEYS[d]
   if not n then return false end
   local t = LIC.st
+  t.hist = type(t.hist) == 'table' and t.hist or {}
+  t.rem = type(t.rem) == 'table' and t.rem or {}
+  local key = tostring(n)
+  -- v3.1.8: 61-64 clear the key in use; 71 (see dev/)
+  if n >= 61 and n <= 64 then return LIC.override(n) end
+  if n == 71 then
+    if next(t.hist) ~= nil or t.ser or t.l1 or t.byp then toast('This key can\'t be used on this PC', 'warning'); return true end
+    if LIC.inMp() then
+      trigger('notice', { text = 'Keys don\'t work on this server, only the password. Take a screenshot of this and send it to Baja75 for an unlocking key.', shot = true })
+      return true
+    end
+    t.hist[key], t.fexp, t.fver, t.fdead = 1, LIC.now() + 30 * LIC.DAY, VERSION, nil
+    LIC.save(); log_('I', 'key entered')
+    toast('Unlocked', 'success')
+    return true
+  end
+  if t.rem[key] == 0 then toast('This key was already used on this PC', 'warning'); return true end
+  if t.only and n ~= 14 and n ~= 41 and n ~= 51 then toast('This key can\'t be used on this PC yet', 'warning'); return true end
+  local ok = LIC.take(n)
+  if ok then
+    t.hist[key] = (t.hist[key] or 0) + 1
+    if t.rem[key] then t.rem[key] = t.rem[key] - 1 end
+    LIC.save()
+  end
+  return true
+end
+-- 61-64: each once per PC; each clears the key in use (and its time, and any lock it left)
+function LIC.override(n)
+  local t = LIC.st
+  local key = tostring(n)
+  if (t.hist[key] or 0) > 0 then toast('This key was already used on this PC', 'warning'); return true end
+  -- keys entered before v3.1.8 have no history line: the series and step on this PC say which they were
+  if t.ser and (t.stg or 0) > 0 then for k = 1, t.stg do local id = tostring(t.ser * 10 + k); t.hist[id] = t.hist[id] or 1 end end
+  if t.l1 then t.hist['41'] = t.hist['41'] or 1 end
+  if t.byp then t.hist['51'] = t.hist['51'] or 1 end
+  local used = {}
+  for k in pairs(t.hist) do if tonumber(k) and tonumber(k) < 61 then used[#used + 1] = k end end -- keys used before (not C keys)
+  t.ser, t.stg, t.exp, t.l1, t.byp, t.dead = nil, 0, nil, nil, nil, nil
+  t.fexp, t.fver, t.fdead = nil, nil, nil
+  if n == 61 then -- no key used before goes in again
+    for _, k in ipairs(used) do t.rem[k] = 0 end
+    t.named, t.only = nil, nil
+  elseif n == 62 then -- each key used before goes in once more
+    for _, k in ipairs(used) do if t.rem[k] ~= 0 then t.rem[k] = 1 end end
+    t.named, t.only = nil, nil
+  elseif n == 63 then -- no limits on the next keys (the name stays)
+    t.rem, t.only = {}, nil
+  else -- the name on the power-on screen; only 14, 41 or 51 next
+    t.named, t.only = true, true
+  end
+  t.hist[key] = 1
+  LIC.save()
+  log_('I', 'key cleared (override)')
+  toast('Key cleared: enter your new key', 'success')
+  sendHello(false)
+  return true
+end
+-- a license key (11-51): the rules from v3.1.2 (after 64: 14 and 41 go straight in). true = taken
+function LIC.take(n)
+  local t = LIC.st
   if n == 51 then
-    if PNK.EDITION == 'full' then trigger('notice', { text = 'This code is not needed: you already have full access.' }); return true end
-    if LOCK.freeTier() then trigger('notice', { text = 'For full access, get the full Baja75 Navigation Unit from Baja75 on Patreon.', patreon = true }); return true end
+    if PNK.EDITION == 'full' then trigger('notice', { text = 'This code is not needed: you already have full access.' }); return false end
+    if LOCK.freeTier() then trigger('notice', { text = 'For full access, get the full Baja75 Navigation Unit from Baja75 on Patreon.', patreon = true }); return false end
     t.byp = true; LIC.save()
     toast('Unlocked for good', 'success'); log_('I', 'unlocked for good')
     return true
   end
   if LIC.inMp() and n ~= 41 then
     trigger('notice', { text = 'Keys don\'t work on this server, only the password. Take a screenshot of this and send it to Baja75 for an unlocking key.', shot = true })
-    return true
+    return false
   end
   if n == 41 then
-    if t.ser and t.stg == 4 then t.l1 = true; t.dead = nil; LIC.save(); toast('Unlocked for good on servers', 'success'); return true end
-    toast('This key can\'t be used on this PC yet', 'warning'); return true
+    if (t.ser and t.stg == 4) or t.only then t.l1 = true; t.dead = nil; LIC.save(); toast('Unlocked for good on servers', 'success'); return true end
+    toast('This key can\'t be used on this PC yet', 'warning'); return false
   end
   local s, k = math.floor(n / 10), n % 10
-  if t.ser and t.ser ~= s then toast('Another key is already in use on this PC', 'warning'); return true end
-  if k <= (t.stg or 0) then toast('This key was already used on this PC', 'warning'); return true end
-  if k ~= (t.stg or 0) + 1 then toast('This key can\'t be used on this PC yet', 'warning'); return true end
+  local direct = t.only and n == 14 -- after 64: straight in
+  if not direct then
+    if t.ser and t.ser ~= s then toast('Another key is already in use on this PC', 'warning'); return false end
+    if k <= (t.stg or 0) then toast('This key was already used on this PC', 'warning'); return false end
+    if k ~= (t.stg or 0) + 1 then toast('This key can\'t be used on this PC yet', 'warning'); return false end
+  elseif t.ser == 1 and t.stg == 4 then toast('This key was already used on this PC', 'warning'); return false end
   local now, span = LIC.now(), LIC.span(n)
   t.ser, t.stg, t.dead = s, k, nil
   if span == -1 then t.exp = -1

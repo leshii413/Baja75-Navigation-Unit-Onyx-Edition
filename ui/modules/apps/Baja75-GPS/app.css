@@ -1016,6 +1016,14 @@
 .txl-dead .d-t { font-size: 2em; font-weight: 900; color: #ff4d42; letter-spacing: 0.06em; text-transform: uppercase; }
 .txl-dead .d-s { font-size: 1.2em; font-weight: 600; color: var(--txl-dim); max-width: 30em; }
 .txl[data-dead="1"] .txl-sheet { z-index: 75; }
+/* v3.1.8: the error screen (covers the whole unit, bezel included; nothing on it can be pressed) */
+.txl-bsod { display: none; position: absolute; inset: 0; z-index: 200; border-radius: inherit; flex-direction: column; justify-content: center; gap: 0.9em; padding: 6% 8%;
+  background: #0a2db0; color: #fff; font-family: "Lucida Console", "Courier New", monospace; font-size: 1.05em; line-height: 1.35; text-align: left; cursor: default; }
+.txl[data-bsod="1"] .txl-bsod { display: flex; }
+.txl[data-bsod="1"] .txl-boot { display: none; }
+.txl-bsod .e-h { align-self: center; background: #c8c8c8; color: #0a2db0; padding: 0 0.5em; font-weight: 700; letter-spacing: 0.04em; }
+.txl-bsod .e-code { font-weight: 700; }
+.txl-bsod .e-dump { opacity: 0.85; }
 
 /* ------------------------------------------------------------------ picture-in-picture (v3.1.2) */
 /* the video full screen, the map small in a corner (tap it: the full map) */
