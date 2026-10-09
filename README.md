@@ -199,7 +199,24 @@ While you record, the buttons are **STOP** (red, with the distance so far), **MA
 
 ## Power button
 
-The round button at the far right of the bezel, next to the green light (hover: *Restart System*), restarts the GPS screen. It goes dark for a moment, shows a short start-up screen, and loads the map, courses and media again. A timed run keeps running in the game meanwhile; video and music stop.
+The round button at the far right of the bezel, next to the green light (hover: *Restart System*), restarts the GPS screen. The unit fades to black for a moment (a theme you picked goes on then), shows a short start-up screen, and loads the map, courses and media again. A timed run keeps running in the game meanwhile; video and music stop.
+
+## Home screen and themes (v3.1.9)
+
+**HOME** (the first button under the screen, bindable as *Button 3 (Home)*) opens the home screen: the clock and big tiles for **Music**, **Video**, **Maps** (back to the map), **Settings** and **Gallery** (your BeamNG screenshots folder). MODE or DISPLAY take you straight back.
+
+**Themes** change the case, the colours and the home screen. Pick one in MENU → Display → *Screen* → *Theme*, then press the **power button**: the whole unit fades to black and comes back in the new theme.
+
+| Edition | Themes |
+|---|---|
+| Full unit | all: Desert Racing, Rock Crawling, Rally, JDM, Drift, Overland, Anime |
+| Adventure Edition | Overland, Anime |
+| Chase Edition | Desert Racing, Rock Crawling, Anime |
+| Rally Edition | Rally, Anime |
+| Track Edition | JDM, Drift, Anime |
+| Common and Free Editions | Anime |
+
+Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
 ## Display options worth knowing
 

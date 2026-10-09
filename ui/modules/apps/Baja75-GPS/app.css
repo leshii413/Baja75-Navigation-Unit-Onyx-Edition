@@ -511,6 +511,8 @@
 .txl-itile.on { background: #2a2e34; box-shadow: inset 0 0 0 0.16em var(--txl-accent); }
 .txl-itile.on span { color: #fff; }
 .txl-note { font-size: 1.05em; color: var(--txl-faint); line-height: 1.35; margin-top: 0.6em; }
+.txl-note.txl-yt-broken { color: var(--txl-warn); margin: 0.2em 0 0.4em; }
+.txl-note.txl-yt-broken b { color: var(--txl-warn); }
 .txl-note.lead { font-size: 1.15em; color: #d9dde2; margin: 0 0 0.5em; }
 .txl-diag { font-family: Consolas, monospace; font-size: 1em; color: var(--txl-dim); }
 
@@ -1093,7 +1095,7 @@
 
 /* the home screen: Music, Video, Maps, Settings, Gallery */
 .txl-home { display: none; }
-.txl[data-zip="onyx"][data-home="1"] .txl-home {
+.txl[data-home="1"] .txl-home {
   display: flex; position: absolute; left: 0; right: 0; top: 2.5em; bottom: 0; z-index: 49; flex-direction: column; align-items: center; justify-content: center; gap: 1.6em;
   background: radial-gradient(90% 80% at 50% 0%, #1d1f23 0%, #0a0b0c 60%, #050506 100%); overflow: hidden;
 }
@@ -1140,3 +1142,123 @@
 
 /* v3.1.5: race number box */
 .txl-input.short { width: 5em; flex: 0 0 5em; }
+
+/* ================================================================== v3.1.9: HOME button, the fade, themes */
+.txl-hwb.home { order: -1; }
+.txl-hwb .hw-ico { width: 1.15em; height: 1.15em; margin-right: 0.45em; vertical-align: -0.18em; }
+.txl-hwb.home span { display: inline-flex; align-items: center; }
+/* the power button: the whole unit (case and screen) fades to black and back */
+.txl-device { transition: filter 0.45s ease-in-out, opacity 0.45s ease-in-out; }
+.txl[data-fade="1"] .txl-device { filter: brightness(0); }
+.txl-themewait { color: var(--txl-warn); font-weight: 700; }
+.txl-note.txl-themenote { margin: 0.1em 0 0.5em; }
+/* the home screen on the standard Baja75 look (every edition but Onyx) */
+.txl:not([data-zip="onyx"])[data-home="1"] .txl-home { background: radial-gradient(80% 70% at 50% 10%, rgba(255, 106, 19, 0.22) 0%, rgba(0, 0, 0, 0) 60%), url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27240%27%20height%3D%27160%27%20viewBox%3D%270%200%20240%20160%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23ff6a13%27%20stroke-opacity%3D%270.18%27%20stroke-width%3D%271.1%27%3E%3Cpath%20d%3D%27M-10%2030c30-18%2052%2010%2082-4s46-22%2078-6%2052%2010%20100-4%27/%3E%3Cpath%20d%3D%27M-10%2052c34-14%2050%2012%2084%200s48-24%2080-8%2050%2014%2096%200%27/%3E%3Cpath%20d%3D%27M-10%2096c22%208%2044-16%2070-8s40%2026%2070%2020%2046-30%2076-22%2034%2014%2044%2010%27/%3E%3Cpath%20d%3D%27M-10%20120c26%206%2046-14%2072-6s42%2024%2072%2018%2048-26%2076-18%2030%2012%2040%208%27/%3E%3Cpath%20d%3D%27M40%20150c10-20%2040-26%2056-12s4%2028-20%2026-40-2-36-14z%27/%3E%3Cpath%20d%3D%27M150%20140c18-14%2046-10%2052%204s-14%2022-34%2016-28-8-18-20z%27/%3E%3C/g%3E%3C/svg%3E"), radial-gradient(90% 80% at 50% 0%, #26292e 0%, #121315 60%, #08090a 100%); background-size: auto, 26em auto, auto; }
+.txl:not([data-zip="onyx"]) .txl-home .h-tile { background: linear-gradient(160deg, rgba(42, 45, 50, 0.92) 0%, rgba(18, 19, 22, 0.92) 70%); box-shadow: inset 0 0 0 0.1em var(--txl-accent), 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
+.txl:not([data-zip="onyx"]) .txl-home .h-tile:hover { box-shadow: inset 0 0 0 0.14em var(--txl-accent), 0 0.7em 1.4em rgba(0, 0, 0, 0.7); }
+.txl:not([data-zip="onyx"]) .txl-home .h-clock { text-shadow: 0 0.06em 0.3em rgba(0, 0, 0, 0.7); }
+.txl:not([data-zip="onyx"]) .txl-home .h-date { color: #d8dce1; text-shadow: 0 0.06em 0.2em rgba(0, 0, 0, 0.8); }
+/* every theme: its picture behind the home screen, a darker band for the tiles */
+.txl[data-theme]:not([data-theme="baja75"])[data-home="1"] .txl-home { background-size: cover; background-position: center; }
+.txl[data-theme]:not([data-theme="baja75"]) .txl-home .h-tile { backdrop-filter: blur(0.3em); }
+.txl[data-theme="jdm"][data-home="1"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/jdm/home.jpg"); }
+.txl[data-theme="rally"][data-home="1"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/rally/home.jpg"); }
+.txl[data-theme="desert"][data-home="1"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/desert/home.jpg"); }
+.txl[data-theme="rock"][data-home="1"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/rock/home.jpg"); }
+.txl[data-theme="drift"][data-home="1"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/drift/home.jpg"); }
+.txl[data-theme="overland"][data-home="1"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/overland/home.jpg"); }
+/* the date under the clock: Rock Crawling, Overland and the standard look; the others show the time only */
+.txl[data-theme="jdm"] .txl-home .h-date, .txl[data-theme="rally"] .txl-home .h-date, .txl[data-theme="desert"] .txl-home .h-date, .txl[data-theme="drift"] .txl-home .h-date { display: none; }
+
+/* ---------------------------------------------------------------- JDM: brushed steel, red trim */
+.txl[data-theme="jdm"] { --txl-card: #1b1d24; --txl-card-hi: #252833; }
+.txl[data-theme="jdm"] .txl-device {
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, rgba(0, 0, 0, 0.05) 1px 3px),
+    radial-gradient(120% 90% at 20% -10%, rgba(160, 175, 200, 0.22) 0%, rgba(0, 0, 0, 0) 45%),
+    linear-gradient(180deg, #2b3342 0%, #1c2230 55%, #121620 100%);
+  box-shadow: inset 0 0 0 0.16em #aeb4bc, inset 0 0.2em 0.2em rgba(255, 255, 255, 0.25), inset 0 -0.3em 0.6em rgba(0, 0, 0, 0.6), 0 0.6em 1.6em rgba(0, 0, 0, 0.7); }
+.txl[data-theme="jdm"] .txl-screen { box-shadow: 0 0 0 0.28em #e3262b, 0 0 0.8em rgba(227, 38, 43, 0.45); }
+.txl[data-theme="jdm"] .txl-case .g { border-color: #c4c9d0; filter: drop-shadow(0 0.08em 0.1em rgba(0, 0, 0, 0.6)); }
+.txl[data-theme="jdm"] .txl-case .sc { background: radial-gradient(circle at 40% 35%, #c9ced5 0%, #6b7178 60%, #2a2d31 100%); }
+.txl[data-theme="jdm"] .txl-case .b75 { color: #4c5566; }
+.txl[data-theme="jdm"] .txl-hwb { background: linear-gradient(180deg, #2a2d33 0%, #15171b 100%); color: #f2f2f2; box-shadow: inset 0.18em 0 0 #e3262b, inset 0 0.1em 0.1em rgba(255, 255, 255, 0.12), 0 0.15em 0.35em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="jdm"] .txl-mtag { color: #fff; }
+.txl[data-theme="jdm"] .txl-home .h-tile { background: linear-gradient(160deg, rgba(36, 38, 46, 0.92), rgba(14, 15, 19, 0.92)); box-shadow: inset 0 0 0 0.08em rgba(255, 255, 255, 0.18), inset 0 -0.22em 0 #e3262b, 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="jdm"] .txl-home .h-top::after { content: ""; display: block; width: 5em; height: 0.18em; margin: 0.35em auto 0; border-radius: 0.1em; background: #e3262b; }
+
+/* ---------------------------------------------------------------- Rally: white case, black rubber corners, red / blue stripes */
+.txl[data-theme="rally"] .txl-device {
+  background: radial-gradient(circle at 20% 30%, rgba(90, 80, 70, 0.10) 0 0.08em, transparent 0.1em) 0 0 / 1.3em 1.1em,
+    radial-gradient(circle at 70% 60%, rgba(60, 55, 50, 0.12) 0 0.06em, transparent 0.08em) 0 0 / 0.9em 1.4em,
+    linear-gradient(180deg, #f1ece3 0%, #e2dcd1 60%, #cfc8bb 100%);
+  box-shadow: inset 0 0 0 0.12em rgba(0, 0, 0, 0.25), inset 0 -0.3em 0.6em rgba(0, 0, 0, 0.25), 0 0.6em 1.6em rgba(0, 0, 0, 0.7); }
+.txl[data-theme="rally"] .txl-case .g { border-color: #1c1d1f; }
+.txl[data-theme="rally"] .txl-case::before, .txl[data-theme="rally"] .txl-case::after { content: ""; position: absolute; width: 7em; height: 1.1em; background: linear-gradient(115deg, transparent 0 18%, #e3262b 18% 38%, transparent 38% 50%, #2f6fe0 50% 70%, transparent 70%); }
+.txl[data-theme="rally"] .txl-case::before { left: 6.5em; top: 0.1em; }
+.txl[data-theme="rally"] .txl-case::after { right: 6.5em; bottom: 0.25em; }
+.txl[data-theme="rally"] .txl-case .b75 { color: #9c968c; text-shadow: none; left: 14em; }
+.txl[data-theme="rally"] .txl-case .sc { background: radial-gradient(circle at 40% 35%, #44474c 0%, #1b1c1f 70%); }
+.txl[data-theme="rally"] .txl-hwb { background: linear-gradient(180deg, #2b2c2f 0%, #121314 100%); color: #f2f2f2; }
+.txl[data-theme="rally"] .txl-hwb:not(.off) span { border-bottom-color: transparent; }
+.txl[data-theme="rally"] .txl-mtag { color: #fff; }
+.txl[data-theme="rally"] .txl-pwr { background: linear-gradient(#2c2d30, #141516); }
+.txl[data-theme="rally"] .txl-home .h-tile { background: linear-gradient(160deg, rgba(40, 42, 46, 0.94), rgba(14, 15, 17, 0.94)); box-shadow: inset 0 0 0 0.08em rgba(255, 255, 255, 0.14), inset 0 -0.24em 0 #e3262b, 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
+
+/* ---------------------------------------------------------------- Desert Racing: charcoal, orange corners, topo lines */
+.txl[data-theme="desert"] .txl-device { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27240%27%20height%3D%27160%27%20viewBox%3D%270%200%20240%20160%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23ff8a3a%27%20stroke-opacity%3D%270.35%27%20stroke-width%3D%271.1%27%3E%3Cpath%20d%3D%27M-10%2030c30-18%2052%2010%2082-4s46-22%2078-6%2052%2010%20100-4%27/%3E%3Cpath%20d%3D%27M-10%2052c34-14%2050%2012%2084%200s48-24%2080-8%2050%2014%2096%200%27/%3E%3Cpath%20d%3D%27M-10%2096c22%208%2044-16%2070-8s40%2026%2070%2020%2046-30%2076-22%2034%2014%2044%2010%27/%3E%3Cpath%20d%3D%27M-10%20120c26%206%2046-14%2072-6s42%2024%2072%2018%2048-26%2076-18%2030%2012%2040%208%27/%3E%3Cpath%20d%3D%27M40%20150c10-20%2040-26%2056-12s4%2028-20%2026-40-2-36-14z%27/%3E%3Cpath%20d%3D%27M150%20140c18-14%2046-10%2052%204s-14%2022-34%2016-28-8-18-20z%27/%3E%3C/g%3E%3C/svg%3E"), radial-gradient(140% 120% at 25% -10%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 45%), linear-gradient(180deg, #2a2b2d 0%, #1a1b1c 55%, #111112 100%); background-size: 22em auto, auto, auto; }
+.txl[data-theme="desert"] .txl-case .g { border-color: #ff6a13; }
+.txl[data-theme="desert"] .txl-home .h-tile { background: linear-gradient(160deg, rgba(36, 28, 22, 0.86), rgba(16, 12, 10, 0.9)); box-shadow: inset 0 0 0 0.12em #ff6a13, 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
+
+/* ---------------------------------------------------------------- Rock Crawling: gunmetal, yellow brackets */
+.txl[data-theme="rock"] .txl-device {
+  background: radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.05) 0 0.1em, transparent 0.14em) 0 0 / 0.7em 0.7em,
+    linear-gradient(180deg, #3b3e42 0%, #25272a 55%, #17181a 100%);
+  box-shadow: inset 0 0 0 0.14em rgba(0, 0, 0, 0.6), inset 0 0.12em 0.15em rgba(255, 255, 255, 0.14), 0 0.6em 1.6em rgba(0, 0, 0, 0.7); }
+.txl[data-theme="rock"] .txl-case .g { border-color: #f5c400; width: 5em; height: 6.4em; border-radius: 0 !important; clip-path: polygon(0 0, 100% 0, 100% 18%, 22% 18%, 22% 100%, 0 100%); }
+.txl[data-theme="rock"] .txl-case .g.tr { clip-path: polygon(0 0, 100% 0, 100% 100%, 78% 100%, 78% 18%, 0 18%); }
+.txl[data-theme="rock"] .txl-case .g.bl { clip-path: polygon(0 0, 22% 0, 22% 82%, 100% 82%, 100% 100%, 0 100%); }
+.txl[data-theme="rock"] .txl-case .g.br { clip-path: polygon(78% 0, 100% 0, 100% 100%, 0 100%, 0 82%, 78% 82%); }
+.txl[data-theme="rock"] .txl-case .g.tl, .txl[data-theme="rock"] .txl-case .g.tr { border-top-width: 1.15em; }
+.txl[data-theme="rock"] .txl-case .g.bl, .txl[data-theme="rock"] .txl-case .g.br { border-bottom-width: 1.15em; }
+.txl[data-theme="rock"] .txl-hwb { box-shadow: inset 0 -0.18em 0 #f5c400, inset 0 0.1em 0.1em rgba(255, 255, 255, 0.1), 0 0.15em 0.35em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="rock"] .txl-hwb:not(.off) span { border-bottom-color: transparent; }
+.txl[data-theme="rock"] .txl-home .h-tile { background: linear-gradient(160deg, rgba(30, 28, 22, 0.86), rgba(12, 11, 9, 0.9)); box-shadow: inset 0 0 0 0.12em #f5c400, 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
+
+/* ---------------------------------------------------------------- Drift: carbon fibre, pink and cyan */
+.txl[data-theme="drift"] .txl-device {
+  background: linear-gradient(115deg, transparent 0 82%, rgba(255, 47, 168, 0.9) 82% 83.2%, transparent 83.2% 84.4%, rgba(25, 200, 240, 0.9) 84.4% 85.4%, transparent 85.4%),
+    repeating-linear-gradient(45deg, #1a1b1e 0 0.25em, #111214 0.25em 0.5em), repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.03) 0 0.25em, rgba(0, 0, 0, 0.1) 0.25em 0.5em);
+  background-blend-mode: normal, normal, overlay;
+  box-shadow: inset 0 0 0 0.12em rgba(255, 255, 255, 0.12), inset 0 -0.3em 0.6em rgba(0, 0, 0, 0.7), 0 0.6em 1.6em rgba(0, 0, 0, 0.7); }
+.txl[data-theme="drift"] .txl-case .g { border-color: #ff2fa8; filter: drop-shadow(0 0 0.35em rgba(255, 47, 168, 0.55)); }
+.txl[data-theme="drift"] .txl-case .g.tr, .txl[data-theme="drift"] .txl-case .g.bl { border-color: #19c8f0; filter: drop-shadow(0 0 0.35em rgba(25, 200, 240, 0.55)); }
+.txl[data-theme="drift"] .txl-hwb { box-shadow: inset 0 0 0 0.08em rgba(25, 200, 240, 0.55), 0 0 0.4em rgba(25, 200, 240, 0.25), 0 0.15em 0.35em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="drift"] .txl-hwb:not(.off) span { border-bottom-color: #ff2fa8; }
+.txl[data-theme="drift"] .txl-mtag { color: #fff; background: transparent; box-shadow: inset 0 0 0 0.12em #19c8f0; }
+.txl[data-theme="drift"] .txl-home .h-tile { background: linear-gradient(160deg, rgba(22, 20, 34, 0.86), rgba(10, 9, 16, 0.9)); box-shadow: inset 0 0 0 0.12em #19c8f0, inset 0 -0.3em 0.5em -0.2em #ff2fa8, 0 0 0.9em rgba(255, 47, 168, 0.35), 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
+
+/* ---------------------------------------------------------------- Overland: olive green, tan corners, brass screws, topo lines */
+.txl[data-theme="overland"] .txl-device { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27240%27%20height%3D%27160%27%20viewBox%3D%270%200%20240%20160%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23d9b46a%27%20stroke-opacity%3D%270.30%27%20stroke-width%3D%271.1%27%3E%3Cpath%20d%3D%27M-10%2030c30-18%2052%2010%2082-4s46-22%2078-6%2052%2010%20100-4%27/%3E%3Cpath%20d%3D%27M-10%2052c34-14%2050%2012%2084%200s48-24%2080-8%2050%2014%2096%200%27/%3E%3Cpath%20d%3D%27M-10%2096c22%208%2044-16%2070-8s40%2026%2070%2020%2046-30%2076-22%2034%2014%2044%2010%27/%3E%3Cpath%20d%3D%27M-10%20120c26%206%2046-14%2072-6s42%2024%2072%2018%2048-26%2076-18%2030%2012%2040%208%27/%3E%3Cpath%20d%3D%27M40%20150c10-20%2040-26%2056-12s4%2028-20%2026-40-2-36-14z%27/%3E%3Cpath%20d%3D%27M150%20140c18-14%2046-10%2052%204s-14%2022-34%2016-28-8-18-20z%27/%3E%3C/g%3E%3C/svg%3E"), radial-gradient(140% 120% at 25% -10%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 45%), linear-gradient(180deg, #4a5536 0%, #3a4429 55%, #2c331f 100%); background-size: 22em auto, auto, auto;
+  box-shadow: inset 0 0 0 0.12em rgba(0, 0, 0, 0.45), inset 0 0.12em 0.15em rgba(255, 255, 255, 0.12), 0 0.6em 1.6em rgba(0, 0, 0, 0.7); }
+.txl[data-theme="overland"] .txl-case .g { border-color: #c9a25a; }
+.txl[data-theme="overland"] .txl-case .sc { background: radial-gradient(circle at 40% 35%, #e8c98a 0%, #a07a3a 55%, #5a4220 100%); }
+.txl[data-theme="overland"] .txl-case .b75 { color: #2a311d; }
+.txl[data-theme="overland"] .txl-hwb { background: linear-gradient(180deg, #2a2d24 0%, #15170f 100%); color: #ece6d6; }
+.txl[data-theme="overland"] .txl-home .h-tile { background: linear-gradient(160deg, rgba(48, 52, 36, 0.86), rgba(20, 22, 14, 0.9)); box-shadow: inset 0 0 0 0.1em rgba(201, 162, 90, 0.75), 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="overland"] .txl-home .h-tile span::after { content: ""; display: block; width: 1.8em; height: 0.16em; margin: 0.35em auto 0; border-radius: 0.1em; background: #ff8a1e; }
+
+/* ---------------------------------------------------------------- Anime (every edition but Onyx): night graphite, lavender corners, pink streaks, sakura */
+.txl[data-theme="anime"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/anime/home.jpg"); }
+.txl[data-theme="anime"][data-home="1"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/anime/home.jpg"); background-size: cover; background-position: center; }
+.txl[data-theme="anime"] .txl-device {
+  background: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='60'%20height='60'%20viewBox='0%200%2060%2060'%3E%3Cg%20fill='%23f3a9d8'%20fill-opacity='.9'%3E%3Cg%20transform='translate(18%2018)'%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(0)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(72)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(144)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(216)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(288)%20translate(0%20-5)'/%3E%3Ccircle%20r='2'%20fill='%23ffe3f4'/%3E%3C/g%3E%3Cg%20transform='translate(44%2040)%20scale(.7)'%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(20)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(92)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(164)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(236)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(308)%20translate(0%20-5)'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") no-repeat 1.6em 0.15em / 3.4em 3.4em, url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='60'%20height='60'%20viewBox='0%200%2060%2060'%3E%3Cg%20fill='%23f3a9d8'%20fill-opacity='.9'%3E%3Cg%20transform='translate(18%2018)'%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(0)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(72)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(144)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(216)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(288)%20translate(0%20-5)'/%3E%3Ccircle%20r='2'%20fill='%23ffe3f4'/%3E%3C/g%3E%3Cg%20transform='translate(44%2040)%20scale(.7)'%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(20)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(92)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(164)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(236)%20translate(0%20-5)'/%3E%3Cellipse%20rx='3.2'%20ry='6'%20transform='rotate(308)%20translate(0%20-5)'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") no-repeat calc(100% - 9em) calc(100% - 0.1em) / 3em 3em,
+    linear-gradient(115deg, transparent 0 80%, rgba(243, 140, 214, 0.75) 80% 81%, transparent 81% 82.2%, rgba(200, 156, 240, 0.7) 82.2% 83%, transparent 83%),
+    linear-gradient(65deg, transparent 0 14%, rgba(243, 140, 214, 0.55) 14% 14.8%, transparent 14.8% 16%, rgba(200, 156, 240, 0.55) 16% 16.6%, transparent 16.6%),
+    linear-gradient(180deg, #24202c 0%, #18151e 55%, #100e14 100%);
+  box-shadow: inset 0 0 0 0.12em rgba(200, 156, 240, 0.35), inset 0 -0.3em 0.6em rgba(0, 0, 0, 0.7), 0 0.6em 1.6em rgba(0, 0, 0, 0.7); }
+.txl[data-theme="anime"] .txl-case .g { border-color: #c89cf0; filter: drop-shadow(0 0 0.3em rgba(200, 156, 240, 0.45)); }
+.txl[data-theme="anime"] .txl-hwb { background: linear-gradient(180deg, #2a2632 0%, #15121a 100%); color: #f3eefa; box-shadow: inset 0 0 0 0.08em rgba(200, 156, 240, 0.4), 0 0.15em 0.35em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="anime"] .txl-hwb:not(.off) span { border-bottom-color: #f38cd6; }
+.txl[data-theme="anime"] .txl-mtag { color: #1c1424; }
+.txl[data-theme="anime"] .txl-home .h-date { color: #c8a8f5; }
+.txl[data-theme="anime"] .txl-home .h-tile { background: linear-gradient(160deg, rgba(40, 30, 52, 0.84), rgba(16, 12, 22, 0.9)); box-shadow: inset 0 0 0 0.1em rgba(214, 170, 250, 0.85), 0 0 0.8em rgba(243, 140, 214, 0.3), 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }

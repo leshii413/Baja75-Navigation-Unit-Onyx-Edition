@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.1.8'
+local VERSION = '3.1.9'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -3872,7 +3872,14 @@ function LIC.sign(t)
     tostring(t.gv), tostring(t.dead), LIC.SALT }
   local ext = LIC.ext(t) -- v3.1.8 fields (key history, C / F keys, the BeamMP name): only signed when there are any,
   if ext ~= '' then parts[#parts + 1] = ext end -- so a sys.dat from before stays valid
+  local ext2 = LIC.ext2(t) -- v3.1.9 (the server day): the same way
+  if ext2 ~= '' then parts[#parts + 1] = ext2 end
   return LOCK.digest(table.concat(parts, '|'))
+end
+-- v3.1.9: time on a Baja75 server today, the day the last extra day was earned, the extra day's end
+function LIC.ext2(t)
+  if t.srvSec == nil and t.srvDay == nil and t.bonusDay == nil and t.bexp == nil then return '' end
+  return table.concat({ 'v9', tostring(t.srvSec), tostring(t.srvDay), tostring(t.bonusDay), tostring(t.bexp) }, ';')
 end
 -- the v3.1.8 fields as one line, always in the same order
 function LIC.ext(t)
@@ -3941,6 +3948,7 @@ function LIC.active()
   if t.exp == -1 then return true end
   if t.exp and n < t.exp then return true end
   if t.fexp and n < t.fexp then return true end
+  if t.bexp and n < t.bexp then return true end -- v3.1.9: the extra day from a Baja75 server
   if not t.ser and not LOCK.freeTier() and n < (t.first or n) + 30 * LIC.DAY then return true end
   return false
 end
@@ -3954,6 +3962,7 @@ end
 function LIC.dead()
   local t = LIC.st
   if not t or t.byp or t.l1 or LOCK.server or LIC.adminOn() then return false end
+  if t.bexp and LIC.now() < t.bexp then return false end -- the extra day opens a disabled unit too
   if not t.dead and t.ser == 3 and t.stg == 4 and t.exp and t.exp ~= -1 and LIC.now() >= t.exp then t.dead = true; LIC.save() end
   return t.dead == true
 end
@@ -3966,8 +3975,11 @@ function LIC.ui()
   if on and t.exp and t.exp ~= -1 and (n < t.exp or not fOn) then u.left = t.exp - n
   elseif on and not t.ser and not t.byp and not t.l1 and not fOn then u.left = (t.first or n) + 30 * LIC.DAY - n end
   if on and (t.exp == -1 or t.byp) then u.life = true end
-  if on and t.ser and t.exp and t.exp ~= -1 and u.left then u.cd = u.left end
-  if u.cd and t.ser == 3 then u.trial = true end -- (the countdown's label) -- v3.1.8: a countdown for every key with an end (71 has none)
+  if on and t.ser == 3 and t.exp and t.exp ~= -1 and u.left then u.cd, u.trial = u.left, true end -- trial keys: the countdown by the clock
+  -- (every other key with an end counts down in MENU > Display > License; 71 shows none)
+  if on and t.bexp and n < t.bexp and not (t.exp and t.exp ~= -1 and n < t.exp) and not t.byp and t.exp ~= -1 then
+    u.left, u.cd, u.bonus, u.trial = t.bexp - n, nil, true, nil -- the extra day is what keeps it open (License tab countdown)
+  end -- v3.1.8: a countdown for every key with an end (71 has none)
   if t.named then u.name = LIC.who() end -- the name on the power-on screen
   if LIC.inMp() and not t.l1 and not t.byp then u.why = 'server'
   elseif not on and t.ser == 1 and t.stg == 4 then u.why = 'pack'
@@ -3990,7 +4002,45 @@ function LIC.seeName()
   if nick and nick ~= t.mpn then t.mpn = nick; LIC.save(); return true end
 end
 -- once a second (from LOCK.check): an unlock ran out, or a key's time came: the screen is told
+-- v3.1.9: an hour on a Baja75 server (once per calendar day) earns an extra day: +24 h on a running key with an end,
+-- otherwise 24 h open from now (or from the end of the first 30 days / an earlier extra day). Not for units open for good,
+-- not in the Onyx Edition.
+LIC.BONUS_NEED, LIC.bonusAt = 3600, nil
+function LIC.full()
+  local t = LIC.st or {}
+  return t.byp == true or t.exp == -1
+end
+function LIC.serverTime()
+  local t = LIC.st
+  if not t or PNK.EDITION == 'onyx' then return end
+  local now = os.time()
+  local dt = LIC.bonusAt and math.min(5, math.max(0, now - LIC.bonusAt)) or 0
+  LIC.bonusAt = now
+  if not LOCK.server or LIC.full() then return end
+  local today = os.date('%Y-%m-%d', LIC.now())
+  if t.srvDay ~= today then t.srvDay, t.srvSec = today, 0 end
+  if t.bonusDay == today then return end
+  t.srvSec = (t.srvSec or 0) + dt
+  if t.srvSec < LIC.BONUS_NEED then
+    if math.floor(t.srvSec) % 60 < dt then LIC.save() end -- kept about once a minute
+    return
+  end
+  local n = LIC.now()
+  t.bonusDay = today
+  if t.exp and t.exp ~= -1 and n < t.exp then t.exp = t.exp + LIC.DAY
+  else
+    local base = n
+    if t.bexp and t.bexp > base then base = t.bexp end
+    if not t.ser and not LOCK.freeTier() and (t.first or n) + 30 * LIC.DAY > base then base = (t.first or n) + 30 * LIC.DAY end
+    t.bexp = base + LIC.DAY
+  end
+  LIC.save()
+  log_('I', 'an hour on a Baja75 server: one extra day')
+  toast('An hour on a Baja75 server: 1 extra day added', 'success')
+  LIC.last = -1 -- the screen hears it
+end
 function LIC.tick(quiet)
+  pcall(LIC.serverTime)
   if LIC.adminEnd and os.time() >= LIC.adminEnd then
     LIC.adminEnd = nil
     log_('I', 'admin unlock ended (again after a game restart)')

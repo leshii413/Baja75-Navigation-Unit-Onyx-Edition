@@ -17,12 +17,26 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.1.8';
+  var VERSION = '3.1.9';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
   // the package letter by the version on the case: C Chase, R Rally, T Track, P Public (Common); the full unit shows the version only
   var EDITION_TAG = { chase: 'C', rally: 'R', track: 'T', common: 'P', free: 'F', onyx: 'O' }[EDITION] || '';
+  // v3.1.9: themes (case, colours, home screen). Each zip has its own: dev/package.py rewrites THEMES_ON
+  // (Track: JDM, Drift; Rally: Rally; Chase: Desert Racing, Rock Crawling; Adventure: Overland; the full unit: all; Anime: every edition but Onyx)
+  var THEMES_ON = [];
+  var THEMES = [
+    { id: 'baja75', name: 'Baja75' },
+    { id: 'desert', name: 'Desert Racing', accent: '#ff6a13' },
+    { id: 'rock', name: 'Rock Crawling', accent: '#f5c400', logo: 1 },
+    { id: 'rally', name: 'Rally', accent: '#e3262b', logo: 1 },
+    { id: 'jdm', name: 'JDM', accent: '#e3262b', logo: 1 },
+    { id: 'drift', name: 'Drift', accent: '#ff2fa8', logo: 1 },
+    { id: 'overland', name: 'Overland', accent: '#c9a25a', logo: 1 },
+    { id: 'anime', name: 'Anime', accent: '#c89cf0', logo: 1 }
+  ].filter(function (t) { return t.id === 'baja75' || THEMES_ON.indexOf(t.id) >= 0; });
+  function themeOf(id) { for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return THEMES[i]; return THEMES[0]; }
   // the Onyx Edition: road and overland exploration in a metallic black unit; no races, Chase Map or unlocking
   var ONYX = EDITION === 'onyx';
   var ONYX_KINDS = { hazard: 1, danger: 1, medic: 1, note: 1, turn: 1 }; // what it marks (no race symbols)
@@ -84,7 +98,8 @@
     pnCalls: 'on', pnLead: 'normal', pnVoice: '', pnNative: true, offCourseM: 15, damageLog: true, snapStyle: 'map',
     mode: COMMON ? 'adventure' : 'chase', commonPreset: 0, modeFields: {}, split: false, display: 'gps', lastMedia: 'music', videoScreen: true, musicScreen: true, vidPip: 'br', musStyle: 'split', musPip: 'br',
     mediaVol: 0.7, mediaMuted: false, recentLinks: [], musicShuffle: false, musicRepeat: 'all',
-    gaugesScreen: true, musicBar: true, musicWithCalls: false, pnPop: 'called', videoWeb: true, videoPage: '', videoBlocked: {}, driverName: '', raceNumber: ''
+    gaugesScreen: true, musicBar: true, musicWithCalls: false, pnPop: 'called', videoWeb: true, videoPage: '', videoBlocked: {}, driverName: '', raceNumber: '',
+    theme: 'baja75', themeNext: '' // v3.1.9: the theme in use, and one chosen in Display (applied by the power button)
   };
   var PN_ICON = 'Tread_XL_icon_pacenote.svg';
   // course names that get "Race This Route"
@@ -215,6 +230,7 @@
     expand: '<svg viewBox="0 0 18 18"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     shrink: '<svg viewBox="0 0 18 18"><path d="M7 2v5H2M16 7h-5V2M11 16v-5h5M2 11h5v5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     pwr: '<svg viewBox="0 0 18 18"><path d="M5.2 4.6a6.2 6.2 0 1 0 7.6 0" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M9 1.6v7" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>',
+    house: '<svg class="hw-ico" viewBox="0 0 24 24"><path d="M3 11.2 12 3.5l9 7.7V21h-6.2v-6.2H9.2V21H3z" fill="currentColor"/></svg>',
     hMusic: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="none" stroke="#fff" stroke-width="1.6"/><circle cx="17.5" cy="16" r="2.6" fill="none" stroke="#fff" stroke-width="1.6"/></svg>',
     hVideo: '<svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3.5" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M10 9.2v5.6l4.8-2.8z" fill="#fff"/></svg>',
     hMaps: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M15.5 8.5 13.2 13.2 8.5 15.5 10.8 10.8z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>',
@@ -701,10 +717,10 @@
       '  <div class="txl-sheet" data-sheet="unlock"></div>',
       '  <div class="txl-sheet" data-sheet="notice"></div>',
       '  <div class="txl-sheet" data-sheet="login"></div>',
-      (ONYX ? '  <div class="txl-home"><div class="h-top"><div class="h-clock"></div><div class="h-date"></div></div><div class="h-tiles">' +
+      ('  <div class="txl-home"><div class="h-top"><div class="h-clock"></div><div class="h-date"></div></div><div class="h-tiles">' +
         [['music', 'Music', G.hMusic], ['video', 'Video', G.hVideo], ['maps', 'Maps', G.hMaps], ['settings', 'Settings', G.hSettings], ['gallery', 'Gallery', G.hGallery]].map(function (t) {
           return '<button class="h-tile" data-act="homeGo" data-v="' + t[0] + '"><i>' + t[2] + '</i><span>' + t[1] + '</span></button>';
-        }).join('') + '</div><img class="h-gem" src="' + APP_DIR + 'onyx/gem.svg" alt=""></div>' : ''),
+        }).join('') + '</div>' + (ONYX ? '<img class="h-gem" src="' + APP_DIR + 'onyx/gem.svg" alt="">' : '') + '</div>'),
       '  <div class="txl-nudge"><div class="n-t">Access to other features requires the product key to unlock it.</div><div class="n-s">Contact Baja75 on Patreon for assistance.</div><div class="n-b"><button class="txl-btn primary" data-act="nudgeKey">ENTER KEY</button><button class="txl-btn" data-act="nudgeClose">OK</button></div></div>',
       '  <div class="txl-dead"><div class="d-t">This unit is disabled</div><div class="d-s">Contact Baja75 Support to unlock it. Take a screenshot of this screen and send it with your request.</div>' + '<button class="txl-btn primary" data-act="keyOpen">ENTER KEY</button></div>',
       '  <div class="txl-boot show"><div class="b-logo"><img src="' + APP_DIR + (ONYX ? 'onyx/logo.svg' : 'logo.png') + '" alt="' + (ONYX ? 'Onyx Edition' : 'Baja75 Navigation Unit') + '"></div><div class="b-sub">10\u2033 ' + (ONYX ? 'OVERLAND' : 'OFF-ROAD') + ' NAVIGATOR' + (EDITION_NAME ? ' \u00b7 ' + EDITION_NAME.toUpperCase() : '') + '</div><div class="b-bar"><i></i></div><div class="b-txt">Loading map\u2026</div><div class="b-info"></div></div>',
@@ -842,6 +858,8 @@
     if (this.restarting || this.destroyed) return;
     var self = this, snd = (this.hello && this.hello.startupSound) || this.chimeUrl;
     this.restarting = true;
+    if (this.s.themeNext) { this.s.theme = this.s.themeNext; this.s.themeNext = ''; this.save(); } // v3.1.9: the chosen theme, on the restart
+    this.root.setAttribute('data-fade', '1'); // the whole unit (case and screen) fades to black, and back in
     try { this.videoStop(); } catch (_) { }
     try { if (this.audio && !this.audio.paused) this.audio.pause(); } catch (_) { }
     this.vfull = false;
@@ -852,6 +870,7 @@
       if (self.destroyed) return;
       self.restarting = false;
       self.root.setAttribute('data-off', '0');
+      self.root.setAttribute('data-fade', '0');
       self.s = loadSettings();
       self.lastHtml = {};
       self.worldKey = '';
@@ -1517,10 +1536,11 @@
       case 'recDiscard': this.call('stopRecording', 'true'); break;
       case 'set': {
         var k = el.getAttribute('data-k');
-        if (isFree()) { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume and the key box can)
+        if (isFree() && k !== 'themeNext') { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume, the key box and the theme can)
         if (k === 'units') this.s.units = v;
         else if (k === 'northUp') this.s.northUp = v === '1';
         else if (k === 'bezel') this.s.bezel = v === '1';
+        else if (k === 'themeNext') { this.s.themeNext = themeOf(v).id === this.theme().id ? '' : themeOf(v).id; if (this.s.themeNext) this.toast(themeOf(v).name + ': press the power button to apply', 'info'); }
         else if (k === 'deck') this.s.deck = v === '1';
         else if (k === 'sharpTurns') this.s.sharpTurns = v === '1';
         else if (k === 'autoZoom') this.s.autoZoom = v === '1';
@@ -1640,7 +1660,11 @@
     r.setAttribute('data-edition', ED());
     r.setAttribute('data-full', FULL ? '1' : '0');
     this.renderHw();
-    r.style.setProperty('--txl-accent', md.color);
+    var th = this.theme(); // v3.1.9: the theme's colour replaces the mode's (the default Baja75 theme keeps the mode colours)
+    r.setAttribute('data-theme', th.id);
+    r.style.setProperty('--txl-accent', th.accent || md.color);
+    var logo = ONYX ? 'onyx/logo.svg' : th.logo ? 'themes/' + th.id + '/logo.png' : 'logo.png';
+    if (this.logoSrc !== logo) { this.logoSrc = logo; var li = this.root.querySelectorAll('.txl-logo, .txl-boot .b-logo img'); for (var i = 0; i < li.length; i++) li[i].src = APP_DIR + logo; }
     if (this.el.brandTag) this.el.brandTag.textContent = md.name;
     var pk = this.panelKind();
     r.setAttribute('data-panel', pk || 'none');
@@ -2573,6 +2597,7 @@
         '<div class="txl-row"><div class="grow"><div class="t1">Music player screen</div><div class="t2">Your music (settings/TreadXLGPS/music)</div></div>' + seg('musicScreen', this.s.musicScreen ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
         (isCommon() || ONYX ? '' : '<div class="txl-row"><div class="grow"><div class="t1">YouTube page on the web</div><div class="t2">Plays YouTube inside ' + esc(WEB_PAGE) + ' so YouTube gets a web address (no Error 153). Off = skip it</div></div>' + seg('videoWeb', this.s.videoWeb !== false ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Your own YouTube page</div><div class="t2">The address of a copy of yt.html on your own website (tried first). Empty = not used</div></div></div>' +
+        '<div class="txl-note txl-yt-broken"><b>YouTube access is currently broken.</b> A fix is being worked on; there is no expected completion time yet. Your own videos (WebM) still play.</div>' +
         '<div class="txl-row"><input class="txl-input" type="text" data-in="videoPage" maxlength="300" placeholder="https://your-site/yt.html" value="' + esc(this.s.videoPage || '') + '">' + kbd('videoPage') + '</div>' +
         (function (bl) {
           var names = [];
@@ -2596,6 +2621,9 @@
         '<div class="txl-row"><div class="grow"><div class="t1">Colour</div></div><div class="txl-swatches">' + COURSE_COLORS.map(function (c) { return '<button class="txl-swatch' + (self.s.courseColor === c ? ' on' : '') + '" style="background:' + c + '" data-act="set" data-k="courseColor" data-v="' + c + '"></button>'; }).join('') + '</div></div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Highlight sharp turns</div><div class="t2">Yellow / orange / red by how tight the turn is</div></div>' + seg('sharpTurns', this.s.sharpTurns ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div></div>' +
         '<div class="txl-sec"><h3>Screen</h3>' +
+        (THEMES.length > 1 && !ONYX ? '<div class="txl-row"><div class="grow"><div class="t1">Theme</div></div>' +
+          seg('themeNext', this.s.themeNext || this.theme().id, THEMES.map(function (t) { return [t.id, t.name.toUpperCase()]; })) + '</div>' +
+          '<div class="txl-note txl-themenote">' + (this.s.themeNext && this.s.themeNext !== this.theme().id ? '<b class="txl-themewait">' + esc(themeOf(this.s.themeNext).name) + ' is set: press the power button to restart the unit and apply it.</b>' : 'The case, colours and home screen. A new theme goes on when the unit restarts (power button).') + '</div>' : '') +
         '<div class="txl-row"><div class="grow"><div class="t1">Device bezel</div><div class="t2">Off = screen only, for small HUD space</div></div>' + seg('bezel', this.s.bezel ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Waypoint list</div></div>' + seg('deck', this.s.deck ? 1 : 0, [[1, 'SHOW'], [0, 'MAP ONLY']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Trip &amp; max speed</div></div>' + btn('resetTrip', 'Reset') + '</div></div>' +
@@ -2768,6 +2796,8 @@
     if (b) { b.classList.add('pressed'); setTimeout(function () { b.classList.remove('pressed'); }, 160); }
     if (isFree() && (n === 1 || n === 2)) this.nudge();
     if (n === 1 && ONYX) { this.showHome(!this.home); return; }
+    if (n === 3 && !ONYX) { this.showHome(!this.home); return; } // v3.1.9: HOME
+    if (this.home && (n === 2 || (n === 1 && !ONYX))) this.showHome(false); // MODE / DISPLAY leave the home screen
     if (n === 1) { if (!isFree()) this.cycleMode(); }
     else if (n === 2) this.cycleDisplay();
     // buttons 3-5: built for a later update, nothing yet
@@ -3264,6 +3294,8 @@
     var one = MODES.length < 2 && !ONYX;
     b.classList.toggle('fixed', one);
     if (ONYX) { b.title = 'Home'; var hs = b.querySelector('span'); if (hs && hs.textContent !== 'HOME') hs.textContent = 'HOME'; return; }
+    var hb = this.root.querySelector('.txl-hwb[data-v="3"]'); // v3.1.9: HOME on every other edition
+    if (hb && !hb.classList.contains('home')) { hb.classList.remove('off'); hb.classList.add('home'); hb.title = 'Home'; hb.querySelector('span').innerHTML = G.house + 'HOME'; }
     b.title = one ? EDITION_NAME : 'Mode: Chase / Adventure / Rally / Track';
     var sp = b.querySelector('span'), txt = one ? MODES[0].name : 'MODE';
     if (sp && sp.textContent !== txt) sp.textContent = txt;
@@ -3285,7 +3317,8 @@
   P.licenseChanged = function () {
     var a = this.access || {}, l = a.lic || {}, self = this;
     this.trialEnd = typeof l.cd === 'number' && !a.server ? Date.now() + l.cd * 1000 : null;
-    this.trialLabel = l.trial ? 'Trial Time Remaining' : 'Key Time Remaining'; // v3.1.8: every key with an end shows its countdown
+    this.trialLabel = 'Trial Time Remaining'; // only trial keys count down by the clock
+    this.licEnd = l.on && typeof l.left === 'number' && !a.server ? Date.now() + l.left * 1000 : null; // the License tab's countdown (every key with an end)
     this.adminEnd = typeof a.admin === 'number' ? Date.now() + a.admin * 1000 : null;
     this.root.setAttribute('data-dead', l.dead && !a.server && !a.admin ? '1' : '0');
     this.root.setAttribute('data-bsod', l.bsod && !a.server && !a.admin ? '1' : '0'); // (the game script already leaves it off there)
@@ -3293,7 +3326,7 @@
     // the power-on screen: the player's name in place of the edition's word once a named key went in ('LESHII413 EDITION')
     if (this.el.bootSub && !ONYX) this.el.bootSub.textContent = '10\u2033 OFF-ROAD NAVIGATOR' + (l.name ? ' \u00b7 ' + String(l.name).toUpperCase() + ' EDITION' : EDITION_NAME ? ' \u00b7 ' + EDITION_NAME.toUpperCase() : '');
     clearInterval(this.trialTimer);
-    if (this.trialEnd || this.adminEnd) this.trialTimer = setInterval(function () { self.renderTrial(); if (self.sheet === 'menu' && self.menuTab === 'display') self.renderSheet(); }, 1000);
+    if (this.trialEnd || this.adminEnd || this.licEnd) this.trialTimer = setInterval(function () { self.renderTrial(); if (self.sheet === 'menu' && self.menuTab === 'display') self.renderSheet(); }, 1000);
     this.renderTrial();
     if (this.el && this.m) { this.applySettings(); this.renderMedia(); } // the picture-in-picture choices follow the unlock
     if (this.sheet === 'menu') this.renderSheet();
@@ -3309,11 +3342,17 @@
   // Display: what's unlocked, and the key box
   P.licenseHtml = function () {
     var a = this.access || {}, l = a.lic || {}, st;
-    var days = function (secs) { var d = Math.ceil(secs / 86400); return d <= 1 ? 'less than a day' : d + ' days'; };
+    var licLeft = this.licEnd ? Math.max(0, Math.floor((this.licEnd - Date.now()) / 1000)) : null;
+    var days = function (secs) { // a live countdown: d:hh:mm:ss
+      var t = licLeft != null ? licLeft : Math.max(0, Math.floor(secs)), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+      return Math.floor(t / 86400) + ':' + p2(Math.floor(t % 86400 / 3600)) + ':' + p2(Math.floor(t % 3600 / 60)) + ':' + p2(t % 60);
+    };
     if (this.adminEnd && this.adminEnd > Date.now()) { var al = Math.floor((this.adminEnd - Date.now()) / 1000); st = 'Admin access: every restriction off for ' + Math.floor(al / 60) + ':' + ((al % 60) < 10 ? '0' : '') + (al % 60) + ' more'; }
     else if (a.server) st = 'On a Baja75 server: everything is open';
     else if (a.password) st = 'Unlocked with the password until the game closes';
     else if (l.on && l.life) st = 'Unlocked for good';
+    else if (l.on && l.bonus && typeof l.left === 'number') st = 'Extra day from a Baja75 server: ' + days(l.left) + ' left';
+    else if (l.on && l.trial && typeof l.left === 'number') st = 'Trial: ' + days(l.left) + ' left';
     else if (l.on && typeof l.left === 'number') st = 'Unlocked: ' + days(l.left) + ' left';
     else if (l.why === 'server') st = 'Keys don\u2019t work on this server, only the password. Take a screenshot and send it to Baja75 for an unlocking key.';
     else if (l.why === 'pack') st = 'Your time has run out: ask Baja75 on Patreon for the unlocking pack';
@@ -3321,7 +3360,8 @@
     else st = 'Locked off the Baja75 servers' + (COMMON ? '' : ' (the password or a license key unlocks it)');
     return '<div class="txl-sec"><h3>License</h3><div class="txl-row"><div class="grow"><div class="t1">' + esc(st) + '</div><div class="t2">A personal-use unlocking license can be bought from Baja75 on Patreon</div></div>' +
       (a.password ? btn('relock', 'LOCK') : '') + btn('keyOpen', 'ENTER KEY', 'blue') + '</div>' +
-      '<div class="txl-note">When your key runs out, contact <b>Baja75 on Patreon</b> for another key, with your proof of purchase, your trial access, or where you found the mod.</div></div>';
+      '<div class="txl-note">When your key runs out, contact <b>Baja75 on Patreon</b> for another key, with your proof of purchase, your trial access, or where you found the mod.</div>' +
+      '<div class="txl-note">Play an hour on a <b>Baja75 server</b> to earn an extra day (once a day).</div></div>';
   };
   // the Free Edition: a short pop-up that other features need the product key
   P.nudge = function () {
@@ -3332,8 +3372,10 @@
     this.nudgeTimer = setTimeout(function () { el.classList.remove('show'); }, 7000);
   };
   // the Onyx Edition's home screen: Music, Video, Maps, Settings, Gallery (button 1 = HOME)
+  // v3.1.9: the theme in use (one this zip doesn't have = the standard Baja75 look)
+  P.theme = function () { return ONYX ? THEMES[0] : themeOf(this.s.theme); };
   P.showHome = function (on) {
-    if (!ONYX || !this.el.home) return;
+    if (!this.el.home) return;
     this.home = !!on;
     this.root.setAttribute('data-home', this.home ? '1' : '0');
     if (this.home) { this.openSheet(null); this.renderHome(); }
@@ -3347,6 +3389,7 @@
   P.homeGo = function (where) {
     var s = this.s;
     if (where === 'gallery') { this.call('openFolder', luaStr('screenshots')); return; } // BeamNG's screenshots folder, in Explorer
+    if (where === 'video' && isFree()) { this.nudge(); return; } // the Free Edition: no video off the servers
     this.showHome(false);
     if (where === 'settings') { this.openSheet('menu'); this.menuTab = 'display'; this.renderSheet(); return; }
     s.display = where === 'music' ? 'music' : where === 'video' ? 'video' : 'gps';

@@ -77,7 +77,7 @@
     "ctx": "tlua",
     "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(3) end",
     "isBasic": true,
-    "title": "Baja75 Navigation Unit: Button 3 (not used yet)",
+    "title": "Baja75 Navigation Unit: Button 3 (Home)",
     "desc": "The GPS's button 3 - reserved for a future update"
   },
   "TreadXLGPS_button4": {
