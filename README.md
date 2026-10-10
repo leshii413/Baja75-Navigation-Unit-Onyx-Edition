@@ -218,6 +218,11 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## Handier (v3.8)
+
+- MENU → Display → **Your settings**: SAVE backs your settings up to `settings/TreadXLGPS/unit_settings.json`, RESTORE brings them back (after a game update, or copy the file to another PC). RESET puts everything back to how the unit came (tap twice).
+- MENU → Display → **Keys** lists every key you can bind. New: **Button 4** = Clean map on / off, **Button 5** = night map on / off.
+
 ## Race smarter (v3.7)
 
 - **Gap to your best run**: while racing a course you've finished before, the race timer shows how far ahead (green) or behind (red) you are against your best run at the same point. Also a data field (GAP TO BEST).

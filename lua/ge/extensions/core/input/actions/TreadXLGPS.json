@@ -59,7 +59,7 @@
     "ctx": "tlua",
     "onDown": "if TreadXLGPS then TreadXLGPS.actionOrientation() end",
     "isBasic": true,
-    "title": "Baja75 Navigation Unit: Track up / North up",
+    "title": "Baja75 Navigation Unit: Track up / North up / 3D",
     "desc": "Switches the GPS map between track-up and north-up"
   },
   "TreadXLGPS_button1": {
@@ -87,7 +87,7 @@
     "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(3) end",
     "isBasic": true,
     "title": "Baja75 Navigation Unit: Button 3 (Home)",
-    "desc": "The GPS's button 3 - reserved for a future update"
+    "desc": "The home screen (HOME)"
   },
   "TreadXLGPS_button4": {
     "cat": "gameplay",
@@ -95,8 +95,8 @@
     "ctx": "tlua",
     "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(4) end",
     "isBasic": true,
-    "title": "Baja75 Navigation Unit: Button 4 (not used yet)",
-    "desc": "The GPS's button 4 - reserved for a future update"
+    "title": "Baja75 Navigation Unit: Button 4 (Clean map)",
+    "desc": "Clean map on / off: only the route and your speed (every edition but Free and Common)"
   },
   "TreadXLGPS_button5": {
     "cat": "gameplay",
@@ -104,8 +104,8 @@
     "ctx": "tlua",
     "onDown": "if TreadXLGPS then TreadXLGPS.actionButton(5) end",
     "isBasic": true,
-    "title": "Baja75 Navigation Unit: Button 5 (not used yet)",
-    "desc": "The GPS's button 5 - reserved for a future update"
+    "title": "Baja75 Navigation Unit: Button 5 (Night map)",
+    "desc": "Night map on / off"
   },
   "TreadXLGPS_mediaVolUp": {
     "cat": "gameplay",

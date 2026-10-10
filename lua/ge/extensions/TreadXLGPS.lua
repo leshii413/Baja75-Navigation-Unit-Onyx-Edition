@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.7'
+local VERSION = '3.8'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -562,7 +562,7 @@ local function buildCourse(name, pts, wpts)
       if not (w.s and w.s >= 0 and w.s <= c.length + 1) then
         local _, s = project(c, tr, w.x, w.y)
         w.s = s
-        tr.i = nil
+        tr.i, tr.far = nil, nil -- (each waypoint its own search: the far cache is for one moving vehicle)
       end
     end
   end
@@ -2185,8 +2185,9 @@ local function updateRace()
       raceFinish(t)
     else
       race.prevS, race.prevT = s, raceClock - race.t0
-      if progress.off <= OFF_COURSE and #race.trace < 4000 and (not race.traceS or s >= race.traceS + 25) and (not race.traceS or s < race.traceS + 400) then
-        race.trace[#race.trace + 1] = { floor(s * 10 + 0.5) / 10, floor(race.prevT * 1000 + 0.5) / 1000 }
+      if progress.off <= OFF_COURSE and #race.trace < 4000 and (not race.traceS or s >= race.traceS + 25) then
+        -- a jump forward of 400 m+ (a recovery, a shortcut): no point there, the trace carries on from here
+        if not race.traceS or s < race.traceS + 400 then race.trace[#race.trace + 1] = { floor(s * 10 + 0.5) / 10, floor(race.prevT * 1000 + 0.5) / 1000 } end
         race.traceS = s
       end
     end
@@ -3626,7 +3627,7 @@ M._field = FIELD
 end
 
 -- input actions (lua/ge/extensions/core/input/actions/TreadXLGPS.json)
--- the five buttons under the screen (1 = MODE, 2 = DISPLAY, 3-5 not used yet) and the media keys
+-- the five buttons under the screen (1 = MODE, 2 = DISPLAY, 3 = HOME, 4 = Clean map, 5 = night map) and the media keys
 function M.actionButton(n) trigger('cmd', { cmd = 'button', n = tonumber(n) or 0 }) end
 function M.actionMedia(what)
   what = tostring(what or '')

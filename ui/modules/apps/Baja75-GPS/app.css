@@ -1444,3 +1444,10 @@
 .txl-chip .v .dl { font-style: normal; font-size: 0.62em; font-weight: 900; margin-left: 0.4em; padding: 0.05em 0.35em; border-radius: 0.3em; vertical-align: 0.25em; }
 .txl-chip .v .dl.fast { background: #16793f; color: #fff; }
 .txl-chip .v .dl.slow { background: #c0261c; color: #fff; }
+
+/* ------------------------------------------------------------------ v3.8: quality of life */
+.txl-btn.red { background: #c0261c; color: #fff; }
+.txl-keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25em 1.2em; padding: 0.3em 0.2em 0.5em; }
+.txl-keys div { display: flex; flex-direction: column; padding: 0.3em 0; border-bottom: 0.08em solid rgba(255, 255, 255, 0.06); min-width: 0; }
+.txl-keys b { font-size: 0.95em; font-weight: 800; }
+.txl-keys span { font-size: 0.8em; color: var(--txl-dim); }

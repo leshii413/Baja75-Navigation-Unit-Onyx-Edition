@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.7';
+  var VERSION = '3.8';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -51,7 +51,7 @@
   function isCommon() { var e = ED(); return e === 'common' || e === 'free'; } // the Common Edition's limits (the Free Edition has them too)
   function PLUS() { return !isCommon(); } // v3.4: the map / music / gallery extras: every edition but Free and Common (off the servers)
   function isFree() { return ED() === 'free'; } // the Free Edition off the servers: Adventure only, no REC, video or waypoint list, settings view-only
-  var FREE_OFF = { recToggle: 1, recStart: 1, undoMark: 1, vidFull: 1, vidPlay: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, resetTrip: 1, siteCheck: 1, videoUnblock: 1, reloadMap: 1, mediaSplit: 1 };
+  var FREE_OFF = { setLoad: 1, setReset: 1, recToggle: 1, recStart: 1, undoMark: 1, vidFull: 1, vidPlay: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, resetTrip: 1, siteCheck: 1, videoUnblock: 1, reloadMap: 1, mediaSplit: 1 };
   var COMMON_OFF = { mark: 1, chase: 1, autoPn: 1, clearAutoPn: 1, editNotes: 1, exportGpx: 1, serverPack: 1 }; // (video: yes, from v3.1.2)
   // the Chase Edition's only symbols: pits, start / finish, VCPs, speed zone start / end
   var CHASE_KINDS = { pit: 1, start: 1, vcp: 1, zone: 1, zoneEnd: 1 };
@@ -168,6 +168,15 @@
   function courseKey(name, source) { return (source || 'mine') + '|' + name; }
 
   // ---------------------------------------------------------------- formatting
+  // v3.8: the bindable keys, for MENU > Display > Keys ([name, what it does, race-only])
+  var KEY_LIST = [
+    ['Button 1 (Mode)', 'Next mode'], ['Button 2 (Display)', 'Map, video, music, gauges'], ['Button 3 (Home)', 'Home screen'],
+    ['Button 4 (Clean map)', 'Only the route and your speed'], ['Button 5 (Night map)', 'Day / night map'],
+    ['Zoom in / Zoom out', 'Map zoom'], ['Track up / North up / 3D', 'Map orientation'], ['Mark waypoint', 'MARK at your position'],
+    ['Start / stop recording', 'REC'], ['Chase next vehicle', 'Co-pilot: the next race vehicle', 1],
+    ['Request a pass', 'PASS during a race', 1], ['OK to pass', 'Answers the newest pass request', 1], ['Pop up', 'The unit big, from the car\u2019s own screen'],
+    ['Media play / pause, next, previous', 'Music and videos'], ['Media volume up / down, mute', 'Volume'], ['Split screen', 'Map + media side by side'], ['Full screen video', 'Video over the whole screen']
+  ];
   // v3.6: the turn arrow of a real navigator: bends by how tight the turn is (1 bend, 2 sharp, 3 hairpin)
   function turnArrow(dir, lv) {
     var p = lv === 3 ? 'M12 22V11a5 5 0 0 0-10 0v3' : lv === 2 ? 'M12 22V10L4 4' : 'M12 22V12q0-5-6-7';
@@ -1295,6 +1304,7 @@
       case EV + 'locked': if (d && d.what) this.guard(d.what === 'wpts' ? 'wpts' : String(d.what)); break;
       case EV + 'notice': if (d && d.text) { this.notice = d; this.openSheet('notice'); } break;
       case EV + 'login': this.openLogin(d && d.what); break;
+      case EV + 'unitSettings': if (d && typeof d === 'object') { this.restoreSettings(d, false); this.toast('Settings restored' + (d._saved ? ' (saved ' + String(d._saved).slice(0, 16) + ')' : ''), 'success'); } break;
       case EV + 'gallery': this.galData = d || { shots: [] }; this.galBad = 0; this.renderGallery(); break;
       case EV + 'pass': // v3.3: race passing alerts (the PASS button, the incoming request card)
         this.passData = d || null;
@@ -1480,6 +1490,16 @@
       case 'noticeOk': this.notice = null; this.openSheet(null); break;
       case 'popClose': this.togglePop(false); break;
       case 'galClose': this.galOpen(false); break;
+      case 'setSave': this.call('saveUnitSettings', luaStr(JSON.stringify(this.s))); break;
+      case 'setLoad': this.call('loadUnitSettings'); break;
+      case 'setReset': {
+        if (this.armed !== 'setReset') { this.armed = 'setReset'; this.renderSheet(); setTimeout(function () { if (self.armed === 'setReset') { self.armed = null; if (self.sheet === 'menu') self.renderSheet(); } }, 3000); break; }
+        this.armed = null;
+        var keep = { theme: this.s.theme, driverName: this.s.driverName, raceNumber: this.s.raceNumber };
+        this.restoreSettings(keep, true);
+        this.toast('Settings reset', 'info');
+        break;
+      }
       case 'galPage': this.galPage = Math.max(0, Number(v) || 0); this.renderGallery(); break;
       case 'galShow': this.galShow(Number(v)); break;
       case 'galPrev': this.galShow(this.galIdx - 1); break;
@@ -2281,6 +2301,18 @@
     el.querySelector('.t-arrow').innerHTML = turnArrow(t.dir, t.lv);
   };
 
+  // v3.8: settings from a backup (only known settings of the right type) or a reset (the defaults + what's kept)
+  P.restoreSettings = function (src, reset) {
+    var s = this.s, k;
+    if (reset) { for (k in DEFAULTS) s[k] = JSON.parse(JSON.stringify(DEFAULTS[k])); }
+    for (k in src) {
+      if (!(k in DEFAULTS) || k === 'dash') continue;
+      var dv = DEFAULTS[k], v = src[k];
+      if (typeof v === typeof dv && (typeof v !== 'object' || Array.isArray(v) === Array.isArray(dv))) s[k] = v;
+    }
+    this.save(); this.applySettings(); this.worldKey = ''; this.lastHtml = {}; this.renderMedia(); this.renderAll();
+    if (this.sheet === 'menu') this.renderSheet();
+  };
   // v3.5: what the screen manages, for MENU > Display (and for reports about a slow map)
   P.perfText = function () {
     var p = this.perf;
@@ -2851,6 +2883,12 @@
         '<div class="txl-row"><div class="grow"><div class="t1">Alerts app shows</div><div class="t2">Faults = wrong way, off course, over the limit, missed VCP, jump start</div></div>' + seg('alertsMode', this.s.alertsMode, [['faults', 'FAULTS'], ['all', 'ALL ALERTS']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Flashing warnings</div><div class="t2">In the Alerts app</div></div>' + seg('alertsFlash', this.s.alertsFlash ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         (ONYX ? '' : '<div class="txl-row"><div class="grow"><div class="t1">PASS button</div><div class="t2">During a race. Hidden, its key still works (Options \u203a Controls)</div></div>' + seg('passBtn', this.s.passBtn ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>') + '</div>' +
+        // v3.8: your settings in a file (game updates and cache clears lose the UI's own storage), a reset, and the keys
+        '<div class="txl-sec"><h3>Your settings</h3>' +
+        '<div class="txl-row"><div class="grow"><div class="t1">Back up to a file</div><div class="t2">settings/TreadXLGPS/unit_settings.json: survives game updates, and copies to another PC</div></div>' + btn('setSave', 'SAVE') + btn('setLoad', 'RESTORE') + '</div>' +
+        '<div class="txl-row"><div class="grow"><div class="t1">Reset all settings</div><div class="t2">Back to how the unit came (your courses, times and key stay)</div></div>' + btn('setReset', this.armed === 'setReset' ? 'TAP TO RESET' : 'RESET', this.armed === 'setReset' ? 'red' : '') + '</div></div>' +
+        '<div class="txl-sec"><h3>Keys</h3><div class="txl-note">Set them in Options \u203a Controls (search \u201cBaja75\u201d). Nothing is bound until you choose.</div><div class="txl-keys">' +
+        KEY_LIST.filter(function (k) { return !(ONYX && k[2]); }).map(function (k) { return '<div><b>' + esc(k[0]) + '</b><span>' + esc(k[1]) + '</span></div>'; }).join('') + '</div></div>' +
         '<div class="txl-sec"><h3>Run log</h3>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Damage log</div><div class="t2">Timed runs also list the parts damaged in each crash (MENU \u203a Times and race_log.txt)</div></div>' + seg('damageLog', this.s.damageLog ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div></div>' +
         '<div class="txl-sec"><h3>Modes &amp; screens</h3>' +
@@ -3076,7 +3114,15 @@
     if (this.home && (n === 2 || (n === 1 && !ONYX))) this.showHome(false); // MODE / DISPLAY leave the home screen
     if (n === 1) { if (!isFree()) this.cycleMode(); }
     else if (n === 2) this.cycleDisplay();
-    // buttons 3-5: built for a later update, nothing yet
+    // v3.8: button 4 (key only) = Clean map on / off; button 5 = the night map on / off
+    else if (n === 4) {
+      if (!PLUS()) { this.toast('Clean map: every edition but Free and Common', 'info'); return; }
+      this.s.cleanMap = !this.s.cleanMap; this.save(); this.applySettings(); this.renderAll();
+      this.toast(this.s.cleanMap ? 'Clean map: the route and your speed' : 'Clean map off', 'info');
+    } else if (n === 5) {
+      this.s.darkMode = this.root.getAttribute('data-dark') === '1' ? 'off' : 'on'; this.save(); this.applySettings(); this.worldKey = ''; this.renderAll();
+      this.toast(this.s.darkMode === 'on' ? 'Night map' : 'Day map', 'info');
+    }
   };
   P.activeMedia = function () {
     var pk = this.panelKind();
@@ -4279,7 +4325,7 @@
   };
 
   // ---------------------------------------------------------------- Angular glue
-  var HOOKS = [EV + 'pass', EV + 'gallery', EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
+  var HOOKS = [EV + 'pass', EV + 'gallery', EV + 'unitSettings', EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
     EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login', EV + 'dashState'];
   TreadXLApp.HOOKS = HOOKS;
 
