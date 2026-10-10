@@ -3773,7 +3773,7 @@ end
 -- The Common Edition has no locks, and no recording, marking, Chase Map, sharing out or video at all (COMMON_OFF). (Inside a function called once: the main chunk is at Lua's 200-local limit.)
 do (function()
 local LOCK = {
-  SERVERS = { '199.127.61.187:30984', '199.127.61.187:30997' },
+  SERVERS = { '199.127.61.187:30984', '199.127.61.187:30997', '162.220.15.150:27035' },
   NAMES = { { 6, 'e5219330682dc173' }, { 6, '7e690f69b9ab4a88' }, { 9, '61b5de1f53e2165c' }, { 9, '39ffe272dba64485' } }, -- { length, digest }: the server-name words
   nameSeen = {},
   DIGEST = '61b5de1f53e2165c',

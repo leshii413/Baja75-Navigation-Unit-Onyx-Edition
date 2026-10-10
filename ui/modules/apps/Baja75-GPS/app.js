@@ -3546,7 +3546,8 @@
     return '<div class="txl-sec"><h3>License</h3><div class="txl-row"><div class="grow"><div class="t1">' + esc(st) + '</div><div class="t2">A personal-use unlocking license can be bought from Baja75 on Patreon</div></div>' +
       (a.password ? btn('relock', 'LOCK') : '') + btn('keyOpen', 'ENTER KEY', 'blue') + '</div>' +
       '<div class="txl-note">When your key runs out, contact <b>Baja75 on Patreon</b> for another key, with your proof of purchase, your trial access, or where you found the mod.</div>' +
-      '<div class="txl-note">Play an hour on a <b>Baja75 server</b> to earn an extra day (once a day).</div></div>';
+      '<div class="txl-note">Play an hour on a <b>Baja75 server</b> to earn an extra day (once a day).</div>' +
+      '<div class="txl-sec"><h3>Approved servers with online access</h3><div class="txl-note"><b>Baja75 Series</b><br><b>Beam Desert Crew</b></div></div></div>';
   };
   // the Free Edition: a short pop-up that other features need the product key
   P.nudge = function () {
