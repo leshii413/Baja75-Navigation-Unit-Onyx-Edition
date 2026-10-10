@@ -1439,3 +1439,8 @@
 .txl[data-mbmode="top"] .txl-turn.show { top: 11.6em; }
 .txl[data-mbmode="right"] .txl-turn.show { right: 13.2em; }
 .txl:not([data-panel="none"]) .txl-haze, .txl[data-vplay="1"]:not([data-vpip="none"]) .txl-haze { display: none !important; }
+
+/* ------------------------------------------------------------------ v3.7: the live gap to your best run */
+.txl-chip .v .dl { font-style: normal; font-size: 0.62em; font-weight: 900; margin-left: 0.4em; padding: 0.05em 0.35em; border-radius: 0.3em; vertical-align: 0.25em; }
+.txl-chip .v .dl.fast { background: #16793f; color: #fff; }
+.txl-chip .v .dl.slow { background: #c0261c; color: #fff; }

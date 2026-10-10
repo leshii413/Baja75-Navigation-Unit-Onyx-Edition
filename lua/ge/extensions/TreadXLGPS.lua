@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.6'
+local VERSION = '3.7'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -3104,6 +3104,22 @@ function M.requestMedia()
   })
 end
 
+-- v3.8: the unit's settings backed up to a file (they otherwise live in the game UI's browser storage, which a game
+-- update, a cache clear or another PC loses): settings/TreadXLGPS/unit_settings.json, restored on request
+function M.saveUnitSettings(js)
+  if type(js) ~= 'string' or #js > 200000 then return end
+  local ok, t = pcall(jsonDecode, js)
+  if not ok or type(t) ~= 'table' then toast('Settings not saved: they could not be read', 'warning'); return end
+  t._saved = os.date('%Y-%m-%d %H:%M')
+  if writeJson(USER_ROOT .. '/unit_settings.json', t, true) then toast('Settings saved to ' .. USER_ROOT:sub(2) .. '/unit_settings.json', 'success')
+  else toast('Settings could not be saved', 'warning') end
+end
+function M.loadUnitSettings()
+  local t = readJson(USER_ROOT .. '/unit_settings.json')
+  if type(t) ~= 'table' then toast('No saved settings yet (MENU > Display > Save settings)', 'info'); return end
+  trigger('unitSettings', t)
+end
+
 -- v3.4: the Gallery: BeamNG's own screenshots (the user folder's screenshots/), newest first, for the gallery view
 function M.requestGallery()
   local list = MEDIA.list('/screenshots', { png = true, jpg = true, jpeg = true })
@@ -4505,7 +4521,7 @@ end
 function D.state() trigger('dashState', { on = D.on, screen = D.tag ~= nil }) end
 -- every event the HUD app gets goes to the screen too (as ['TreadXLGPS.name', data])
 -- not for the screen: the unit's keys and one-off replies (the screen copy would act on them a second time: music, videos)
-D.SKIP = { dashState = true, gallery = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
+D.SKIP = { dashState = true, gallery = true, unitSettings = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
 M._dashFwd = function(name, data)
   if not (D.on and D.tag) or D.SKIP[name] then return end
   -- positions: 5 a second is plenty for the car's screen, and it can't fall behind (v3.3)

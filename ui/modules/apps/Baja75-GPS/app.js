@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.6';
+  var VERSION = '3.7';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -1195,6 +1195,11 @@
         // v3.3: the newest position only, once per frame (a slow screen never builds up a queue of old positions)
         if (!this.hudNow) { this.queueHud(d); break; }
         this.hud = d || null;
+        if (this.hud && typeof this.hud.speed === 'number') { // v3.7: the average speed over the last ~20 s (TIME TO FINISH)
+          var tnow = Date.now(), dts = this.avgAt ? Math.min(1, (tnow - this.avgAt) / 1000) : 0.1;
+          this.avgAt = tnow;
+          this.avgSpeed = this.avgSpeed == null ? this.hud.speed : this.avgSpeed + (this.hud.speed - this.avgSpeed) * Math.min(1, dts / 20);
+        }
         if (this.passData && arr(this.passData.alerts).length) this.renderPass(); // a danger alert puts the pass card lower
         if (this.hud && !this.hudSeen) { this.hudSeen = true; if (!this.hello && this.helloTries) this.renderBanner(); }
         if (this.hud) {
@@ -1882,6 +1887,11 @@
     chaseGap: { k: 'RACE VEH GAP', f: function (a) { var c = a.h.chase; if (!c || c.gap == null) return null; var d = fmtDist(c.gap, a.u); return [(c.gap > 0 ? '+' : '') + d.v, d.u]; } },
     chaseSpeed: { k: 'RACE VEH SPEED', f: function (a) { var c = a.h.chase; if (!c || c.speed == null) return null; var s = fmtSpeed(c.speed, a.u); return [s.v, s.u]; } },
     time: { k: 'TIME', f: function (a) { var t = clockText(a.tod).split(' '); return [t[0], t[1]]; } },
+    // v3.7 (from time-attack and trip apps): the live gap to your best run, the time left to the finish at your recent
+    // average speed, and the cornering / braking load
+    gapBest: { k: 'GAP TO BEST', f: function (a) { var r = a.h.race; if (!r || r.state !== 'running' || typeof r.delta !== 'number') return null; return [(r.delta > 0 ? '+' : r.delta < 0 ? '\u2212' : '') + Math.abs(r.delta).toFixed(2), 's']; } },
+    eta: { k: 'TIME TO FINISH', f: function (a) { var c = a.h.course; if (!c || c.toFinish == null || !(a.avg > 2)) return null; return [fmtClock(c.toFinish / a.avg), '']; } },
+    gforce: { k: 'G-FORCE', f: function (a) { var t = a.t; if (!t || !isFinite(t.gx) || !isFinite(t.gy)) return null; return [Math.sqrt(t.gx * t.gx + t.gy * t.gy).toFixed(2), 'g']; } },
     // Tuner mode: the vehicle's own gauges (BeamNG electrics stream)
     rpm: { k: 'RPM', f: function (a) { var e = a.e; return e && isFinite(e.rpm) ? [String(Math.round(e.rpm / 10) * 10), 'rpm'] : null; } },
     gear: { k: 'GEAR', f: function (a) { var e = a.e; if (!e) return null; var g = e.gear != null ? e.gear : e.gear_M != null ? e.gear_M : e.gear_A; if (g == null) return null; if (typeof g === 'number') g = g === 0 ? 'N' : g < 0 ? 'R' : String(g); return [String(g), '']; } },
@@ -1898,7 +1908,7 @@
       return run == null ? null : run > 0.5 ? ['CHG', ''] : ['OFF', ''];
     } }
   };
-  var TEL_FIELDS = { rpm: 1, gear: 1, throttle: 1, waterTemp: 1, oilTemp: 1, fuel: 1, boost: 1, battery: 1 };
+  var TEL_FIELDS = { gforce: 1, rpm: 1, gear: 1, throttle: 1, waterTemp: 1, oilTemp: 1, fuel: 1, boost: 1, battery: 1 };
   function tempOf(c, u) { return u === 'metric' ? [String(Math.round(c)), '\u00b0C'] : [String(Math.round(c * 9 / 5 + 32)), '\u00b0F']; }
   var FIELD_ORDER = Object.keys(FIELDS);
   TreadXLApp.FIELDS = FIELD_ORDER;
@@ -1981,11 +1991,12 @@
     var ve = this.elx && now - (this.elxAt || 0) < 2500 ? this.elx : tl;
     var needTel = set.some(function (k) { return TEL_FIELDS[k]; }) || this.panelKind() === 'gauges';
     if (needTel !== this.telOn) { this.telOn = needTel; this.call('setTelemetry', needTel ? 'true' : 'false'); }
+    var avg = this.avgSpeed;
     set.forEach(function (key, i) {
       var F = FIELDS[key] || FIELDS.speed;
       var label = typeof F.k === 'function' ? F.k(u) : F.k;
       var val = null;
-      try { val = F.f({ h: h, u: u, tod: tod, e: ve, t: tl }); } catch (_) { val = null; }
+      try { val = F.f({ h: h, u: u, tod: tod, e: ve, t: tl, avg: avg }); } catch (_) { val = null; }
       html += '<div class="txl-field" data-act="field" data-i="' + i + '"><div class="k">' + esc(label) + '</div>' +
         (val ? '<div class="v">' + esc(val[0]) + '<small>' + esc(val[1] || '') + '</small></div>' : '<div class="v dim">--</div>') + '</div>';
     });
@@ -2073,7 +2084,8 @@
     var r = h.race;
     if (r && r.state === 'running') {
       var last = r.splits && r.splits.length ? r.splits[r.splits.length - 1] : null;
-      html += chip('race', G.race, 'RACE TIME', esc(fmtRace(r.t)), last ? last.label + ' ' + fmtRace(last.t) : (r.best ? 'BEST ' + fmtRace(r.best) : ''));
+      var dl = typeof r.delta === 'number' ? '<i class="dl ' + (r.delta > 0.005 ? 'slow' : 'fast') + '">' + (r.delta > 0.005 ? '+' : r.delta < -0.005 ? '\u2212' : '') + Math.abs(r.delta).toFixed(2) + '</i>' : ''; // v3.7: vs your best run
+      html += chip('race', G.race, 'RACE TIME', esc(fmtRace(r.t)) + dl, last ? last.label + ' ' + fmtRace(last.t) : (r.best ? 'BEST ' + fmtRace(r.best) : ''));
     }
     if (this.s.chipVcp && h.nextVcp) html += chip('vcp', '<img src="' + ICON_DIR + 'Tread_XL_icon_checkpoint.svg">', h.nextVcp.label || 'NEXT VCP', dv(h.nextVcp.ahead));
     if (this.s.chipPit && h.nextPit) html += chip('pit', '<img src="' + ICON_DIR + 'Tread_XL_icon_repair.svg">', h.nextPit.label || 'NEXT PIT', dv(h.nextPit.ahead));

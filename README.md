@@ -218,6 +218,11 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## Race smarter (v3.7)
+
+- **Gap to your best run**: while racing a course you've finished before, the race timer shows how far ahead (green) or behind (red) you are against your best run at the same point. Also a data field (GAP TO BEST).
+- New data fields: **TIME TO FINISH** (at your recent average speed) and **G-FORCE**. Tap a data box to change it.
+
 ## 3D view and turn guidance (v3.6)
 
 - **3D view**: tap the compass button to go Track up → North up → 3D (or MENU → Display → Map orientation). The map lies back toward the horizon like a car navigator.
