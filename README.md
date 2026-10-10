@@ -218,6 +218,11 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## Smoother (v3.5)
+
+- Lighter on the game: route detection on long courses and full servers, no map drawing while the map isn't on screen, live engine data only in Track mode.
+- MENU → Display → *Map frame rate*: SMOOTH or 30 FPS (slower computers). The line under it shows how fast the unit runs; send it with any report of a slow or late map.
+
 ## Map, music and gallery extras (v3.4)
 
 Every edition but Free and Common (on a Baja75 server those get them too):

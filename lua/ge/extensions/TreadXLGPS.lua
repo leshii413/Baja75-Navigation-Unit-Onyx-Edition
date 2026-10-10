@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.4'
+local VERSION = '3.5'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -423,6 +423,8 @@ end
 
 -- nearest point on the course; a moving window keeps loops / crossings continuous while on course,
 -- and anything off course gets a full search (re-acquire after a reset, teleport or shortcut)
+-- v3.5: a 50 m grid of the course's segments, so a vehicle off the course line no longer checks every segment of the
+-- course every tick (long courses and full BeamMP servers made that the slowest part of the game script)
 local function project(c, tracker, x, y)
   local nSeg = #c.pts - 1
   if nSeg < 1 then return nil end
@@ -431,6 +433,44 @@ local function project(c, tracker, x, y)
     local i1 = math.min(nSeg, tracker.i + 60)
     local d, s, i = projectRange(c, x, y, i0, i1)
     if d <= OFF_COURSE then tracker.i = i; return d, s, i end
+  end
+  if nSeg > 200 then
+    local g = c.grid
+    if not g or g.n ~= nSeg then -- built once per course: each segment in every 50 m cell its box touches
+      g = { n = nSeg, C = 50, cells = {} }
+      for k = 1, nSeg do
+        local a, b = c.pts[k], c.pts[k + 1]
+        for cx = floor(math.min(a.x, b.x) / 50), floor(math.max(a.x, b.x) / 50) do
+          for cy = floor(math.min(a.y, b.y) / 50), floor(math.max(a.y, b.y) / 50) do
+            local key = cx * 100003 + cy
+            local cell = g.cells[key]
+            if not cell then cell = {}; g.cells[key] = cell end
+            cell[#cell + 1] = k
+          end
+        end
+      end
+      c.grid = g
+    end
+    -- the cells around the point (2 cells = 100 m covers the off-course distance)
+    local gx, gy = floor(x / 50), floor(y / 50)
+    local bestD, bestS, bestI = math.huge, 0, nil
+    for cx = gx - 2, gx + 2 do
+      for cy = gy - 2, gy + 2 do
+        local cell = g.cells[cx * 100003 + cy]
+        if cell then
+          for _, k in ipairs(cell) do
+            local d2, s = projSeg(c, k, x, y)
+            if d2 < bestD then bestD, bestS, bestI = d2, s, k end
+          end
+        end
+      end
+    end
+    if bestI and sqrt(bestD) <= OFF_COURSE then tracker.i, tracker.far = bestI, nil; return sqrt(bestD), bestS, bestI end
+    -- far from the course: the full search at most once a second for this vehicle
+    if tracker.far and clock - tracker.far.t < 1 then return tracker.far.d, tracker.far.s, tracker.far.i end
+    local d, s, i = projectRange(c, x, y, 1, nSeg)
+    tracker.i, tracker.far = i, { t = clock, d = d, s = s, i = i }
+    return d, s, i
   end
   local d, s, i = projectRange(c, x, y, 1, nSeg)
   tracker.i = i

@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.4';
+  var VERSION = '3.5';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -94,7 +94,7 @@
     courseColor: '#e8178a', sharpTurns: true, autoZoom: true, zoom: 0.8, showOthers: true, othersNames: true,
     chaseInterval: 0, markIcon: 'Tread_XL_icon_checkpoint.svg', markLabel: '', markLimit: 35, mapOpacity: 1,
     clockSource: 'pc', darkMode: ONYX ? 'on' : 'off', chipVcp: true, chipPit: true, sound: true, chimeVol: 0.6, // (the Onyx Edition starts on the night map)
-    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, // passBtn: v3.3
+    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, mapFps: 60, // passBtn: v3.3; mapFps: v3.5
     mbarPos: 'bottom', cleanMap: false, mapBtns: true, actBtns: true, showFields: true, showSpeed: true, showScale: true, // v3.4
     markMode: 'symbols', pnDraft: { d: 1, c: 'three', len: '', sh: '', ca: 0, m: [] }, pnBar: true,
     pnCalls: 'on', pnLead: 'normal', pnVoice: '', pnNative: true, offCourseM: 15, damageLog: true, snapStyle: 'map',
@@ -1066,6 +1066,7 @@
     var d = this.hudPending;
     this.hudPending = null; this.hudHas = false;
     this.hudNow = true;
+    if (this.perf) this.perf.huds++;
     try { this.onEvent(EV + 'hud', d); } finally { this.hudNow = false; }
     if (!this.isDash && d && typeof d.seq === 'number') this.lua('if TreadXLGPS and TreadXLGPS.hudAck then TreadXLGPS.hudAck(' + d.seq + ') end');
   };
@@ -1669,6 +1670,7 @@
         else if (k === 'alertsOnGps') this.s.alertsOnGps = v === '1';
         else if (k === 'alertsMode') this.s.alertsMode = v;
         else if (k === 'alertsFlash') this.s.alertsFlash = v === '1';
+        else if (k === 'mapFps') this.s.mapFps = v === '30' ? 30 : 60;
         else if (k === 'passBtn') { this.s.passBtn = v === '1'; this.renderPass(); }
         else if (k === 'cleanMap' || k === 'mapBtns' || k === 'actBtns' || k === 'showFields' || k === 'showSpeed' || k === 'showScale') { if (!PLUS()) return; this.s[k] = v === '1'; }
         else if (k === 'chimeVol') this.s.chimeVol = Math.max(0, Math.min(1, Number(v) || 0));
@@ -1788,6 +1790,7 @@
     var logo = ONYX ? 'onyx/logo.svg' : th.logo ? 'themes/' + th.id + '/logo.png' : 'logo.png';
     if (this.logoSrc !== logo) { this.logoSrc = logo; var li = this.root.querySelectorAll('.txl-logo, .txl-boot .b-logo img'); for (var i = 0; i < li.length; i++) li[i].src = APP_DIR + logo; }
     if (this.el.brandTag) this.el.brandTag.textContent = md.name;
+    if (this.env.streams) this.env.streams(!!capsOf(this.s.mode).gauges); // v3.5: the electrics stream only in Track mode
     var pk = this.panelKind();
     // v3.4: music as a bar over the map instead of the card (tap it: the full player until DISPLAY or the map)
     var pcb = this.pipCfg(), barMode = PLUS() && pk === 'music' && !this.splitOn() && pcb.ms === 'pip' && !this.mbarBig;
@@ -2176,7 +2179,39 @@
     now = now || (window.performance ? performance.now() : Date.now());
     var dt = this.lastFrame ? Math.min(0.1, (now - this.lastFrame) / 1000) : 0.016;
     this.lastFrame = now;
-    try { this.renderFrame(now, dt); } catch (_) { }
+    var pf = this.perf || (this.perf = { t: now, frames: 0, draws: 0, huds: 0, ms: 0, fps: 0, dps: 0, hps: 0 });
+    pf.frames++;
+    if (now - pf.t >= 1000) { var k = 1000 / (now - pf.t); pf.fps = Math.round(pf.frames * k); pf.dps = Math.round(pf.draws * k); pf.hps = Math.round(pf.huds * k); pf.frames = pf.draws = pf.huds = 0; pf.t = now; if (this.sheet === 'menu') { var pe = this.el.sheets.menu.querySelector('.txl-perf'); if (pe) pe.textContent = this.perfText(); } }
+    if (this.mapHidden()) { this.mapSkipped = true; return; } // v3.5: nothing to draw: no map work at all
+    if (this.mapSkipped) { this.mapSkipped = false; this.worldKey = ''; } // (back: everything drawn fresh)
+    // v3.5: Map frame rate 30 (MENU > Display): every other frame, for slower computers
+    if (this.s.mapFps === 30 && this.lastDraw && now - this.lastDraw < 30) return;
+    var dtd = this.lastDraw ? Math.min(0.1, (now - this.lastDraw) / 1000) : dt;
+    this.lastDraw = now;
+    var t0 = window.performance ? performance.now() : 0;
+    try { this.renderFrame(now, dtd); } catch (_) { }
+    if (window.performance) pf.ms = pf.ms * 0.9 + (performance.now() - t0) * 0.1;
+    pf.draws++;
+  };
+  // v3.5: what the screen manages, for MENU > Display (and for reports about a slow map)
+  P.perfText = function () {
+    var p = this.perf;
+    if (!p || !p.fps) return '30 FPS draws the map every other frame: lighter on slower computers';
+    return p.fps + ' frames/s \u00b7 map drawn ' + p.dps + '/s in ' + p.ms.toFixed(1) + ' ms \u00b7 ' + p.hps + ' positions/s from the game';
+  };
+  // v3.5: the map isn't on screen (home, gallery, full-screen video / music / gauges, the unit on the car's own screen,
+  // switched off or the error screen): the frame loop skips drawing it, which the game's UI otherwise does 60 times a second
+  P.mapHidden = function () {
+    var r = this.root;
+    if (this.home || this.galOn) return true;
+    if (r.getAttribute('data-off') === '1' || r.getAttribute('data-bsod') === '1') return true;
+    if (r.getAttribute('data-dash') === '1' && r.getAttribute('data-dashscreen') === '1' && r.getAttribute('data-pop') !== '1') return true;
+    var pk = r.getAttribute('data-panel');
+    if (pk && pk !== 'none' && r.getAttribute('data-split') !== '1') {
+      if (pk !== 'video') return r.getAttribute('data-mpip') === 'none'; // full music / gauges (the music card keeps the map)
+      return r.getAttribute('data-vplay') !== '1' || r.getAttribute('data-vpip') === 'none'; // video full: the map only in its corner while playing
+    }
+    return false;
   };
 
   P.renderFrame = function (now, dt) {
@@ -2690,6 +2725,7 @@
         '<div class="txl-row"><div class="grow"><div class="t1">Auto zoom</div><div class="t2">Zooms out with speed</div></div>' + seg('autoZoom', this.s.autoZoom ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Terrain image brightness</div></div><input class="txl-range" type="range" min="0.3" max="1" step="0.05" data-in="mapOpacity" value="' + this.s.mapOpacity + '"></div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Map data</div><div class="t2">' + esc(mapTxt) + '</div></div>' + btn('reloadMap', 'Reload map') + '</div>' +
+        '<div class="txl-row"><div class="grow"><div class="t1">Map frame rate</div><div class="t2 txl-perf">' + esc(this.perfText()) + '</div></div>' + seg('mapFps', this.s.mapFps === 30 ? 30 : 60, [[60, 'SMOOTH'], [30, '30 FPS']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Other vehicles</div><div class="t2">Players and AI within 3 km</div></div>' + seg('showOthers', this.s.showOthers ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Vehicle names</div></div>' + seg('othersNames', this.s.othersNames ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Dark mode</div><div class="t2">Night map colours. Auto = from 7 PM to 6:30 AM (in-game time when the clock uses it)</div></div>' + seg('darkMode', this.s.darkMode, [['off', 'OFF'], ['on', 'ON'], ['auto', 'AUTO']]) + '</div></div>' +
@@ -4171,11 +4207,16 @@
           HOOKS.forEach(function (h) { scope.$on(h, function (_, d) { app.onEvent(h, d); }); });
           scope.$on('app:resized', function () { app.resize(); });
           // Tuner mode's gauges: rpm, gear, temperatures, fuel, boost
-          if (SM) {
-            try { SM.add(['electrics']); } catch (_) { }
-            scope.$on('streamsUpdate', function (_, streams) { if (streams && streams.electrics) { app.elx = streams.electrics; app.elxAt = Date.now(); } });
-          }
-          scope.$on('$destroy', function () { if (SM) { try { SM.remove(['electrics']); } catch (_) { } } app.destroy(); });
+          // v3.5: the vehicle's electrics stream (every frame, a large table) only while Track mode needs it
+          var streamOn = false;
+          app.env.streams = function (on) {
+            if (!SM || on === streamOn) return;
+            streamOn = on;
+            try { if (on) SM.add(['electrics']); else SM.remove(['electrics']); } catch (_) { }
+          };
+          if (SM) scope.$on('streamsUpdate', function (_, streams) { if (streamOn && streams && streams.electrics) { app.elx = streams.electrics; app.elxAt = Date.now(); } });
+          app.applySettings();
+          scope.$on('$destroy', function () { app.env.streams(false); app.destroy(); });
         }
       };
     }]);
