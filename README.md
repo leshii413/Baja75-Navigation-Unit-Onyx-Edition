@@ -218,6 +218,11 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## 3D view and turn guidance (v3.6)
+
+- **3D view**: tap the compass button to go Track up → North up → 3D (or MENU → Display → Map orientation). The map lies back toward the horizon like a car navigator.
+- **Turn guidance**: with a course loaded, the next bend shows with its arrow and distance (green bend, orange sharp, red hairpin). MENU → Display → On the map → *Turn guidance* turns it off.
+
 ## Smoother (v3.5)
 
 - Lighter on the game: route detection on long courses and full servers, no map drawing while the map isn't on screen, live engine data only in Track mode.

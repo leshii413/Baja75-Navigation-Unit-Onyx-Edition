@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.5';
+  var VERSION = '3.6';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -94,7 +94,8 @@
     courseColor: '#e8178a', sharpTurns: true, autoZoom: true, zoom: 0.8, showOthers: true, othersNames: true,
     chaseInterval: 0, markIcon: 'Tread_XL_icon_checkpoint.svg', markLabel: '', markLimit: 35, mapOpacity: 1,
     clockSource: 'pc', darkMode: ONYX ? 'on' : 'off', chipVcp: true, chipPit: true, sound: true, chimeVol: 0.6, // (the Onyx Edition starts on the night map)
-    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, mapFps: 60, // passBtn: v3.3; mapFps: v3.5
+    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, mapFps: 60, view3d: false, turnGuide: true, // view3d, turnGuide: v3.6
+    // passBtn: v3.3; mapFps: v3.5
     mbarPos: 'bottom', cleanMap: false, mapBtns: true, actBtns: true, showFields: true, showSpeed: true, showScale: true, // v3.4
     markMode: 'symbols', pnDraft: { d: 1, c: 'three', len: '', sh: '', ca: 0, m: [] }, pnBar: true,
     pnCalls: 'on', pnLead: 'normal', pnVoice: '', pnNative: true, offCourseM: 15, damageLog: true, snapStyle: 'map',
@@ -167,6 +168,12 @@
   function courseKey(name, source) { return (source || 'mine') + '|' + name; }
 
   // ---------------------------------------------------------------- formatting
+  // v3.6: the turn arrow of a real navigator: bends by how tight the turn is (1 bend, 2 sharp, 3 hairpin)
+  function turnArrow(dir, lv) {
+    var p = lv === 3 ? 'M12 22V11a5 5 0 0 0-10 0v3' : lv === 2 ? 'M12 22V10L4 4' : 'M12 22V12q0-5-6-7';
+    var head = lv === 3 ? 'M-1 11 2 15 5 11' : lv === 2 ? 'M3 9 3 3 9 3' : 'M3 8 5 4 9 6';
+    return '<svg viewBox="-2 0 24 24"' + (dir === 'R' ? ' style="transform:scaleX(-1)"' : '') + '><path d="' + p + '" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="' + head + '" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
   function fmtDist(m, units) {
     if (typeof m !== 'number' || !isFinite(m)) return { v: '--', u: '' };
     var neg = m < 0; m = Math.abs(m);
@@ -548,24 +555,38 @@
     layer.style.willChange = 'auto';
     setTimeout(function () { layer.style.willChange = 'transform'; }, 60);
   };
+  // v3.6: tilt (deg) and perspective (px) give the 3D view of a real car navigator: the road ahead lies back toward a
+  // horizon. toLocal / toWorld apply the same projection as the CSS (rotateX about the anchor, then perspective).
+  WorldView.prototype.setTilt = function (deg, persp) { this.tilt = deg || 0; this.persp = persp || 900; };
   WorldView.prototype.setCamera = function (cx, cy, headingDeg, northUp, zoom, ax, ay) {
-    this.cam = { x: cx, y: cy, h: headingDeg, z: zoom, ax: ax, ay: ay, th: northUp ? 0 : -headingDeg };
+    this.cam = { x: cx, y: cy, h: headingDeg, z: zoom, ax: ax, ay: ay, th: northUp ? 0 : -headingDeg, tilt: this.tilt || 0, p: this.persp || 900 };
     var e = this.ext;
     if (!e) { this.layer.style.visibility = 'hidden'; return; }
     this.layer.style.visibility = 'visible';
     var px = (cx - e[0]) * this.k, py = (-cy - e[1]) * this.k;
-    this.layer.style.transform = 'translate(' + ax.toFixed(2) + 'px,' + ay.toFixed(2) + 'px) rotate(' + this.cam.th.toFixed(3) +
+    var tl = this.cam.tilt ? 'translate(' + ax.toFixed(2) + 'px,' + ay.toFixed(2) + 'px) perspective(' + this.cam.p.toFixed(0) + 'px) rotateX(' + this.cam.tilt.toFixed(2) + 'deg) translate(' + (-ax).toFixed(2) + 'px,' + (-ay).toFixed(2) + 'px) ' : '';
+    this.layer.style.transform = tl + 'translate(' + ax.toFixed(2) + 'px,' + ay.toFixed(2) + 'px) rotate(' + this.cam.th.toFixed(3) +
       'deg) scale(' + (zoom / this.k).toFixed(6) + ') translate(' + (-px).toFixed(2) + 'px,' + (-py).toFixed(2) + 'px)';
     this.updateStrokes(zoom);
   };
   WorldView.prototype.toLocal = function (x, y) {
     var c = this.cam, t = c.th * Math.PI / 180, co = Math.cos(t), si = Math.sin(t);
     var dx = (x - c.x) * c.z, dy = -(y - c.y) * c.z;
-    return [c.ax + dx * co - dy * si, c.ay + dx * si + dy * co];
+    var X = dx * co - dy * si, Y = dx * si + dy * co;
+    if (c.tilt) {
+      var a = c.tilt * Math.PI / 180, z = Y * Math.sin(a), w = c.p / Math.max(1, c.p - z);
+      return [c.ax + X * w, c.ay + Y * Math.cos(a) * w];
+    }
+    return [c.ax + X, c.ay + Y];
   };
   WorldView.prototype.toWorld = function (X, Y) {
     var c = this.cam, t = c.th * Math.PI / 180, co = Math.cos(t), si = Math.sin(t);
     var dx = X - c.ax, dy = Y - c.ay;
+    if (c.tilt) { // undo the perspective first
+      var a = c.tilt * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+      var yy = dy * c.p / (ca * c.p + dy * sa), w = c.p / Math.max(1, c.p - yy * sa);
+      dx = dx / w; dy = yy;
+    }
     return [c.x + (dx * co + dy * si) / c.z, c.y - (-dx * si + dy * co) / c.z];
   };
 
@@ -756,6 +777,7 @@
         [['music', 'Music', G.hMusic], ['video', 'Video', G.hVideo], ['maps', 'Maps', G.hMaps], ['settings', 'Settings', G.hSettings], ['gallery', 'Gallery', G.hGallery]].map(function (t) {
           return '<button class="h-tile" data-act="homeGo" data-v="' + t[0] + '"><i>' + t[2] + '</i><span>' + t[1] + '</span></button>';
         }).join('') + '</div>' + (ONYX ? '<img class="h-gem" src="' + APP_DIR + 'onyx/gem.svg" alt="">' : '') + '</div>'),
+      '  <div class="txl-turn"><i class="t-arrow"></i><div class="t-txt"><b class="t-d"></b><span class="t-w"></span></div></div><div class="txl-haze"></div>',
       '  <div class="txl-pass" aria-live="polite"></div>',
       '  <div class="txl-gal"><div class="g-head"><b>GALLERY</b><span class="g-n"></span><span class="grow"></span><button class="txl-btn" data-act="openFolder" data-v="screenshots">OPEN FOLDER</button><button class="txl-btn g-x" data-act="galClose" title="Close">\u2715</button></div><div class="g-grid"></div><div class="g-pg"></div></div>',
       '  <div class="txl-galview"><img alt=""><div class="gv-bar"><button class="gv-b" data-act="galPrev" title="Previous">\u2039</button><span class="gv-n"></span><button class="gv-b" data-act="galNext" title="Next">\u203a</button><button class="gv-b" data-act="galViewClose" title="Back to the gallery">\u2715</button></div></div>',
@@ -788,7 +810,7 @@
       limit: q('.txl-limit'), scale: q('.txl-scale'), orient: q('.orient'), center: q('[data-act="center"]'),
       chaseBtn: q('[data-act="chase"]'), recBtn: q('[data-act="recToggle"]'), toast: q('.txl-toast'), banner: q('.txl-banner'),
       chips: q('.txl-chips'), pnbar: q('.txl-pnbar'), count: q('.txl-count'), result: q('.txl-result'), boot: q('.txl-boot'), raceBtn: q('[data-act="raceGo"]'),
-      actions: q('.txl-actions'), media: q('.txl-media'), pass: q('.txl-pass'), gal: q('.txl-gal'), galView: q('.txl-galview'), passBtn: q('[data-act="passReq"]'), brandTag: q('.txl-brand b'), mbar: q('.txl-mbar'),
+      actions: q('.txl-actions'), media: q('.txl-media'), pass: q('.txl-pass'), gal: q('.txl-gal'), turn: q('.txl-turn'), galView: q('.txl-galview'), passBtn: q('[data-act="passReq"]'), brandTag: q('.txl-brand b'), mbar: q('.txl-mbar'),
       sheets: { menu: q('[data-sheet="menu"]'), mark: q('[data-sheet="mark"]'), chase: q('[data-sheet="chase"]'), unlock: q('[data-sheet="unlock"]'), notice: q('[data-sheet="notice"]'), login: q('[data-sheet="login"]') }
     };
     // stylesheet (legacy apps don't load app.css on their own in every game version)
@@ -999,7 +1021,7 @@
   P.mapSize = function () { return [this.el.map.clientWidth || 0, this.el.map.clientHeight || 0]; };
   P.anchor = function () {
     var sz = this.mapSize();
-    return [sz[0] / 2 + this.pan[0], sz[1] * (this.s.northUp ? 0.5 : 0.62) + this.pan[1]];
+    return [sz[0] / 2 + this.pan[0], sz[1] * (this.s.northUp ? 0.5 : this.s.view3d ? 0.7 : 0.62) + this.pan[1]];
   };
   P.updatePanUi = function () {
     var panned = Math.abs(this.pan[0]) + Math.abs(this.pan[1]) > 4;
@@ -1414,8 +1436,11 @@
     switch (a) {
       case 'zoomIn': this.zoom(1); break;
       case 'zoomOut': this.zoom(-1); break;
-      case 'orient':
-        this.s.northUp = !this.s.northUp; this.save();
+      case 'orient': // track up -> north up -> 3D (v3.6) -> track up
+        if (this.s.view3d) { this.s.view3d = false; this.s.northUp = false; }
+        else if (this.s.northUp) { this.s.northUp = false; this.s.view3d = true; }
+        else this.s.northUp = true;
+        this.save(); this.applySettings();
         this.renderHud();
         if (this.sheet === 'menu') this.renderSheet();
         break;
@@ -1653,7 +1678,7 @@
         var k = el.getAttribute('data-k');
         if (isFree() && k !== 'themeNext' && k !== 'dash' && k !== 'passBtn') { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume, the key box, the theme and the vehicle's screen can)
         if (k === 'units') this.s.units = v;
-        else if (k === 'northUp') this.s.northUp = v === '1';
+        else if (k === 'northUp') { this.s.northUp = v === '1'; this.s.view3d = v === '3d'; }
         else if (k === 'bezel') this.s.bezel = v === '1';
         else if (k === 'dash') { this.s.dash = v === '1'; this.pop = false; this.call('setDash', this.s.dash ? 'true' : 'false'); }
         else if (k === 'themeNext') { this.s.themeNext = themeOf(v).id === this.theme().id ? '' : themeOf(v).id; if (this.s.themeNext) this.toast(themeOf(v).name + ': press the power button to apply', 'info'); }
@@ -1670,6 +1695,7 @@
         else if (k === 'alertsOnGps') this.s.alertsOnGps = v === '1';
         else if (k === 'alertsMode') this.s.alertsMode = v;
         else if (k === 'alertsFlash') this.s.alertsFlash = v === '1';
+        else if (k === 'turnGuide') this.s.turnGuide = v === '1';
         else if (k === 'mapFps') this.s.mapFps = v === '30' ? 30 : 60;
         else if (k === 'passBtn') { this.s.passBtn = v === '1'; this.renderPass(); }
         else if (k === 'cleanMap' || k === 'mapBtns' || k === 'actBtns' || k === 'showFields' || k === 'showSpeed' || k === 'showScale') { if (!PLUS()) return; this.s[k] = v === '1'; }
@@ -1805,6 +1831,7 @@
     r.setAttribute('data-hidespeed', PLUS() && !cl && !this.s.showSpeed ? '1' : '0');
     r.setAttribute('data-hidescale', PLUS() && (cl || !this.s.showScale) ? '1' : '0');
     r.setAttribute('data-clean', cl ? '1' : '0');
+    r.setAttribute('data-3d', this.s.view3d && !this.s.northUp ? '1' : '0');
     r.setAttribute('data-panel', pk || 'none');
     r.setAttribute('data-split', pk && this.splitOn() ? '1' : '0');
     if (pk !== 'video') this.vfull = false; // full screen belongs to the video screen
@@ -1976,7 +2003,7 @@
 
     var hd = this.camState ? this.camState.h : (Number(h.heading) || 0);
     this.el.orient.querySelector('svg').style.transform = 'rotate(' + (this.s.northUp ? 0 : -hd) + 'deg)';
-    this.el.orient.querySelector('span').textContent = this.s.northUp ? 'N UP' : 'TRK UP';
+    this.el.orient.querySelector('span').textContent = this.s.northUp ? 'N UP' : this.s.view3d ? '3D' : 'TRK UP';
 
     this.renderAlert(h);
     this.renderDeck(h);
@@ -2193,6 +2220,55 @@
     if (window.performance) pf.ms = pf.ms * 0.9 + (performance.now() - t0) * 0.1;
     pf.draws++;
   };
+  // v3.6: turn-by-turn guidance like a real navigator: the next sharp turn on the loaded course (from the same turn
+  // levels that colour the line), its direction and the distance to it along the course
+  P.courseTurns = function () {
+    var c = this.course;
+    if (!c || !c.flat || c.flat.length < 6) return [];
+    if (c.turnList) return c.turnList;
+    // the heading change over 30 m either side of each point: 30+ deg a bend, 60+ sharp, 100+ a hairpin; one turn per run
+    var f = c.flat, n = f.length / 2, cum = new Float64Array(n), out = [], W = 30, a = 0, b = 0, run = null;
+    for (var i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot(f[2 * i] - f[2 * i - 2], f[2 * i + 1] - f[2 * i - 1]);
+    var close = function () { if (run) { out.push({ s: run.s0, dir: run.cross > 0 ? 'L' : 'R', lv: run.ang >= 100 ? 3 : run.ang >= 60 ? 2 : 1, ang: run.ang }); run = null; } };
+    for (i = 0; i < n; i++) {
+      while (a < i && cum[i] - cum[a + 1] >= W) a++;
+      while (b < n - 1 && cum[b] - cum[i] < W) b++;
+      var ang = 0, cross = 0;
+      if (a < i && b > i && cum[i] - cum[a] >= W * 0.6 && cum[b] - cum[i] >= W * 0.6) {
+        var x1 = f[2 * i] - f[2 * a], y1 = f[2 * i + 1] - f[2 * a + 1], x2 = f[2 * b] - f[2 * i], y2 = f[2 * b + 1] - f[2 * i + 1];
+        cross = x1 * y2 - y1 * x2;
+        ang = Math.abs(Math.atan2(cross, x1 * x2 + y1 * y2)) * 180 / Math.PI;
+      }
+      if (ang >= 30) {
+        if (run && cross * run.cross < 0) close(); // an S-bend: the other way is the next turn
+        if (!run) run = { s0: Math.max(0, cum[i] - W * 0.5), ang: 0, cross: cross };
+        if (ang > run.ang) { run.ang = ang; run.cross = cross; }
+      } else close();
+    }
+    close();
+    c.turnList = out;
+    return out;
+  };
+  P.renderTurn = function () {
+    var el = this.el.turn;
+    if (!el) return;
+    var h = this.hud, cs = h && h.course, on = this.s.turnGuide !== false && cs && typeof cs.s === 'number' && cs.off != null && cs.off < 60;
+    var t = null;
+    if (on) { var list = this.courseTurns(); for (var i = 0; i < list.length; i++) if (list[i].s > cs.s - 5) { t = list[i]; break; } }
+    var dist = t ? Math.max(0, t.s - cs.s) : 0;
+    if (!t || dist > 1200) { if (el.className !== 'txl-turn') el.className = 'txl-turn'; return; }
+    var word = (t.lv === 3 ? 'HAIRPIN ' : t.lv === 2 ? 'SHARP ' : '') + (t.dir === 'L' ? 'LEFT' : 'RIGHT');
+    var dd = fmtDist(dist, this.s.units);
+    var key = word + '|' + dd.v + dd.u + '|' + t.lv;
+    var cls = 'txl-turn show lv' + t.lv + ' ' + (t.dir === 'L' ? 'left' : 'right') + (dist < 120 ? ' near' : '');
+    if (el.className !== cls) el.className = cls;
+    if (key === this.turnKey) return;
+    this.turnKey = key;
+    el.querySelector('.t-d').textContent = dist < 15 ? 'NOW' : dd.v + ' ' + dd.u;
+    el.querySelector('.t-w').textContent = word;
+    el.querySelector('.t-arrow').innerHTML = turnArrow(t.dir, t.lv);
+  };
+
   // v3.5: what the screen manages, for MENU > Display (and for reports about a slow map)
   P.perfText = function () {
     var p = this.perf;
@@ -2222,7 +2298,9 @@
     ov.xhair.setAttribute('transform', 'translate(' + (sz[0] / 2) + ' ' + (sz[1] / 2) + ')');
     if (!has) { ov.me.setAttribute('visibility', 'hidden'); this.view.layer.style.visibility = 'hidden'; return; }
     var c = this.camState, z = this.effZoom();
-    this.view.setCamera(c.x, c.y, c.h, this.s.northUp, z, a[0], a[1]);
+    this.view.setTilt(this.s.view3d && !this.s.northUp ? 52 : 0, Math.max(300, sz[1] * 1.35));
+    this.view.setCamera(c.x, c.y, c.h, this.s.northUp, z * (this.s.view3d && !this.s.northUp ? 1.25 : 1), a[0], a[1]);
+    this.renderTurn();
     if (Math.abs(z - (this._scaleZ || 0)) / z > 0.03) { this._scaleZ = z; this.renderScale(); }
     // my arrow sits on the anchor; it points up in track-up, along the heading in north-up
     ov.me.setAttribute('visibility', this.hud && this.hud.ok === false ? 'hidden' : 'visible');
@@ -2721,7 +2799,7 @@
       var about = 'Leshii413 | Baja75 Series';
       body = '<div class="txl-sec"><h3>Units &amp; map</h3>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Units</div></div>' + seg('units', u, [['imperial', 'MI / MPH'], ['metric', 'KM / KM/H']]) + '</div>' +
-        '<div class="txl-row"><div class="grow"><div class="t1">Map orientation</div></div>' + seg('northUp', this.s.northUp ? 1 : 0, [[0, 'TRACK UP'], [1, 'NORTH UP']]) + '</div>' +
+        '<div class="txl-row"><div class="grow"><div class="t1">Map orientation</div></div>' + seg('northUp', this.s.view3d ? '3d' : this.s.northUp ? 1 : 0, [[0, 'TRACK UP'], [1, 'NORTH UP'], ['3d', '3D']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Auto zoom</div><div class="t2">Zooms out with speed</div></div>' + seg('autoZoom', this.s.autoZoom ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Terrain image brightness</div></div><input class="txl-range" type="range" min="0.3" max="1" step="0.05" data-in="mapOpacity" value="' + this.s.mapOpacity + '"></div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Map data</div><div class="t2">' + esc(mapTxt) + '</div></div>' + btn('reloadMap', 'Reload map') + '</div>' +
@@ -2732,6 +2810,7 @@
         '<div class="txl-sec"><h3>On the map</h3>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Distance to next VCP</div><div class="t2">Card above the speed</div></div>' + seg('chipVcp', this.s.chipVcp ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Distance to next pit</div><div class="t2">Pit symbols on the loaded course</div></div>' + seg('chipPit', this.s.chipPit ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +
+        '<div class="txl-row"><div class="grow"><div class="t1">Turn guidance</div><div class="t2">The next bend on the loaded course and how far it is, like a car navigator</div></div>' + seg('turnGuide', this.s.turnGuide !== false ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         (PLUS() ? '<div class="txl-row"><div class="grow"><div class="t1">Clean map</div><div class="t2">Only the route and your speed. Tap the map to see the buttons for a few seconds</div></div>' + seg('cleanMap', this.s.cleanMap ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
           (this.s.cleanMap ? '' :
           '<div class="txl-row"><div class="grow"><div class="t1">Map buttons</div><div class="t2">Zoom, track up / north up, center</div></div>' + seg('mapBtns', this.s.mapBtns ? 1 : 0, [[1, 'SHOW'], [0, 'HIDE']]) + '</div>' +

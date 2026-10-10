@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.5'
+local VERSION = '3.6'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -2104,6 +2104,11 @@ local function raceGo()
   race.state, race.t0, race.splits, race.prevS, race.prevT = 'running', raceClock, {}, nil, nil
   race.counts, race.active = { jump = race.jumps or 0, reset = 0, recover = 0 }, {}
   race.segs, race.seg = {}, nil
+  -- v3.7: this run's time every 25 m along the course, and the best run's, for the live gap to your best (like a
+  -- time-attack delta); the best run's trace is kept in the course's times file
+  race.trace, race.traceS = {}, nil
+  local bt = readTimes(race.name).trace
+  race.bestTrace = type(bt) == 'table' and #bt >= 2 and bt or nil
   race.driver = nil
   race.driver = RunLog.driverName()
   Dmg.start()
@@ -2116,6 +2121,10 @@ local function raceFinish(t)
   local prevBest = times.best
   local isBest = not prevBest or t < prevBest
   if isBest then times.best = floor(t * 1000 + 0.5) / 1000 end
+  if isBest and race.trace and #race.trace >= 2 then -- the new best run's trace (v3.7: the gap to it next time)
+    race.trace[#race.trace + 1] = { r2(course.length), floor(t * 1000 + 0.5) / 1000 }
+    times.trace = race.trace
+  end
   local model = nil
   local pv = playerVehicle()
   if pv then pcall(function() model = pv:getJBeamFilename() end) end
@@ -2176,6 +2185,10 @@ local function updateRace()
       raceFinish(t)
     else
       race.prevS, race.prevT = s, raceClock - race.t0
+      if progress.off <= OFF_COURSE and #race.trace < 4000 and (not race.traceS or s >= race.traceS + 25) and (not race.traceS or s < race.traceS + 400) then
+        race.trace[#race.trace + 1] = { floor(s * 10 + 0.5) / 10, floor(race.prevT * 1000 + 0.5) / 1000 }
+        race.traceS = s
+      end
     end
   end
   return nil
@@ -2287,6 +2300,18 @@ local function raceForHud()
     local sp = {}
     for i = math.max(1, #race.splits - 2), #race.splits do sp[#sp + 1] = race.splits[i] end
     h.splits = sp
+    -- v3.7: the live gap to your best run at this point of the course (+ slower, - faster); nil off the course
+    local bt = race.bestTrace
+    if bt and progress and progress.off <= OFF_COURSE then
+      local s = progress.s
+      local lo, hi = 1, #bt
+      if s >= bt[1][1] and s <= bt[hi][1] then
+        while hi - lo > 1 do local mid = floor((lo + hi) / 2); if bt[mid][1] <= s then lo = mid else hi = mid end end
+        local a, b = bt[lo], bt[hi]
+        local f = b[1] > a[1] and (s - a[1]) / (b[1] - a[1]) or 0
+        h.delta = r2(h.t - (a[2] + (b[2] - a[2]) * f))
+      end
+    end
   end
   if race.result then h.result = race.result; h.resultAge = r2(clock - (race.finishedAt or clock)) end
   return h

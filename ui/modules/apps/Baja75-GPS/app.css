@@ -1406,3 +1406,36 @@
   background: rgba(10, 11, 12, 0.78); box-shadow: 0 0.2em 0.6em rgba(0, 0, 0, 0.6); max-width: 94%; }
 .gv-b { width: 2.6em; height: 2.6em; border-radius: 50%; background: rgba(255, 255, 255, 0.1); font-size: 1.15em; font-weight: 900; display: flex; align-items: center; justify-content: center; }
 .gv-n { font-size: 0.85em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22em; padding: 0 0.3em; }
+
+/* ------------------------------------------------------------------ v3.6: realism */
+/* 3D view: the map lies back toward a hazy horizon, like a car navigator; the scale bar means nothing in perspective */
+.txl-haze { display: none; }
+.txl[data-3d="1"] .txl-haze { display: block; position: absolute; left: 30%; right: 0; top: 2.5em; height: 30%; z-index: 2; pointer-events: none;
+  background: linear-gradient(180deg, rgba(196, 216, 232, 0.92) 0%, rgba(214, 214, 196, 0.55) 38%, rgba(221, 208, 170, 0) 100%); }
+.txl[data-dark="1"][data-3d="1"] .txl-haze { background: linear-gradient(180deg, rgba(10, 16, 30, 0.95) 0%, rgba(14, 18, 26, 0.55) 40%, rgba(0, 0, 0, 0) 100%); }
+.txl[data-deck="0"][data-3d="1"] .txl-haze { left: 0; }
+.txl[data-3d="1"] .txl-scale { display: none; }
+.txl[data-3d="1"] .txl-world { transform-style: flat; }
+
+/* turn-by-turn: the next bend, its arrow and the distance to it (green, like a real navigator's guidance box) */
+.txl-turn { display: none; }
+.txl-turn.show {
+  display: flex; align-items: center; gap: 0.55em; position: absolute; z-index: 24; right: 5em; top: 7.3em;
+  padding: 0.45em 0.8em 0.45em 0.5em; border-radius: 0.6em; background: #0f6b3a; color: #fff;
+  box-shadow: inset 0 0 0 0.12em rgba(255, 255, 255, 0.15), 0 0.25em 0.7em rgba(0, 0, 0, 0.5);
+}
+.txl-turn.lv2 { background: #b85d06; }
+.txl-turn.lv3 { background: #b3261e; }
+.txl-turn.near { animation: txl-turn-pulse 0.8s ease-in-out infinite alternate; }
+@keyframes txl-turn-pulse { from { filter: brightness(1); } to { filter: brightness(1.3); } }
+.t-arrow { width: 3em; height: 3em; flex: 0 0 auto; }
+.t-arrow svg { width: 100%; height: 100%; display: block; }
+.t-txt { display: flex; flex-direction: column; line-height: 1.05; }
+.t-d { font-size: 1.65em; font-weight: 900; letter-spacing: 0.02em; }
+.t-w { font-size: 0.85em; font-weight: 800; letter-spacing: 0.12em; opacity: 0.92; }
+/* out of the way of the alert card, the music bar on top and hidden data boxes */
+.txl-alert.show ~ .txl-turn.show { top: 12.4em; }
+.txl[data-hidefields="1"] .txl-turn.show { top: 3.2em; }
+.txl[data-mbmode="top"] .txl-turn.show { top: 11.6em; }
+.txl[data-mbmode="right"] .txl-turn.show { right: 13.2em; }
+.txl:not([data-panel="none"]) .txl-haze, .txl[data-vplay="1"]:not([data-vpip="none"]) .txl-haze { display: none !important; }
