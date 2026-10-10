@@ -218,6 +218,10 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## Polish (v3.9)
+
+- After an update the unit shows a short *What's new* once. Restoring settings from a file checks every value, so an old or edited file can't break anything.
+
 ## Handier (v3.8)
 
 - MENU → Display → **Your settings**: SAVE backs your settings up to `settings/TreadXLGPS/unit_settings.json`, RESTORE brings them back (after a game update, or copy the file to another PC). RESET puts everything back to how the unit came (tap twice).

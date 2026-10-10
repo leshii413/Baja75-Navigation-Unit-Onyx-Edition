@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.8';
+  var VERSION = '3.9';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -94,7 +94,8 @@
     courseColor: '#e8178a', sharpTurns: true, autoZoom: true, zoom: 0.8, showOthers: true, othersNames: true,
     chaseInterval: 0, markIcon: 'Tread_XL_icon_checkpoint.svg', markLabel: '', markLimit: 35, mapOpacity: 1,
     clockSource: 'pc', darkMode: ONYX ? 'on' : 'off', chipVcp: true, chipPit: true, sound: true, chimeVol: 0.6, // (the Onyx Edition starts on the night map)
-    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, mapFps: 60, view3d: false, turnGuide: true, // view3d, turnGuide: v3.6
+    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, mapFps: 60, seenVersion: '', // seenVersion: v3.9
+    view3d: false, turnGuide: true, // view3d, turnGuide: v3.6
     // passBtn: v3.3; mapFps: v3.5
     mbarPos: 'bottom', cleanMap: false, mapBtns: true, actBtns: true, showFields: true, showSpeed: true, showScale: true, // v3.4
     markMode: 'symbols', pnDraft: { d: 1, c: 'three', len: '', sh: '', ca: 0, m: [] }, pnBar: true,
@@ -982,7 +983,7 @@
     if (!this.bootFull) {
       // the app was opened in a map that was already loaded: just until the map is there
       bar.style.width = Math.max(0, Math.min(100, age / 5000 * 100)).toFixed(1) + '%';
-      if ((ready && age > 1400) || age > 5000) { this.booting = false; clearInterval(this.bootTimer); this.el.boot.classList.remove('show'); if (ONYX) this.showHome(true); this.maybeLogin(); }
+      if ((ready && age > 1400) || age > 5000) { this.booting = false; clearInterval(this.bootTimer); this.el.boot.classList.remove('show'); if (ONYX) this.showHome(true); this.maybeLogin(); this.whatsNew(); }
       return;
     }
     if (age < LOAD) {
@@ -1006,6 +1007,7 @@
       clearInterval(this.bootTimer);
       this.el.boot.classList.remove('show');
       this.maybeLogin();
+      this.whatsNew();
     }
   };
   // the chime plays in the UI; if the page may not play audio yet, the game's own audio plays the same file
@@ -1400,10 +1402,23 @@
       '</div></div>';
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
+  // v3.9: after an update, once: what's new (not on the very first start, not over the sign-in or another sheet)
+  var WHATS_NEW = ['3D map view (tap the compass), turn guidance and a live gap to your best run',
+    'MENU \u203a Display: Map frame rate, settings backup / restore / reset, and every key listed',
+    'New data fields: GAP TO BEST, TIME TO FINISH, G-FORCE \u00b7 Button 4 = Clean map, Button 5 = night map'];
+  P.whatsNew = function () {
+    if (this.isDash) return;
+    var seen = this.s.seenVersion;
+    if (seen === VERSION) return;
+    this.s.seenVersion = VERSION; this.save();
+    if (!seen || this.sheet) return; // a first start has nothing "new"; never cover a sheet
+    this.notice = { title: 'What\u2019s new in v' + VERSION, list: WHATS_NEW };
+    this.openSheet('notice');
+  };
   P.noticeHtml = function () {
     var n = this.notice || {};
-    return head('Notice') + '<div class="txl-sheetbody"><div class="txl-unlock">' +
-      '<div class="ul-t">' + esc(n.text || '') + '</div>' +
+    return head(n.title || 'Notice') + '<div class="txl-sheetbody"><div class="txl-unlock">' +
+      (n.list ? '<ul class="txl-new">' + n.list.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<div class="ul-t">' + esc(n.text || '') + '</div>') +
       (n.shot ? '<div class="ul-s">Take a screenshot of this screen and send it to Baja75 with your request.</div>' : '') +
       (n.patreon ? '<div class="ul-s">Baja75 on Patreon</div>' : '') +
       '<div class="txl-btnrow">' + btn('noticeOk', 'OK', 'primary') + '</div></div></div>';
@@ -2305,11 +2320,39 @@
   P.restoreSettings = function (src, reset) {
     var s = this.s, k;
     if (reset) { for (k in DEFAULTS) s[k] = JSON.parse(JSON.stringify(DEFAULTS[k])); }
+    var wasDash = !!s.dash;
+    // v3.9: a value is taken only if it has the default's shape all the way down (arrays of the default's item type,
+    // objects key by key), so a hand-edited or old file can't break a screen; colours must be colours
+    var fits = function (v, dv) {
+      if (dv === null || v === null) return v === dv;
+      if (typeof v !== typeof dv) return false;
+      if (typeof v === 'number') return isFinite(v);
+      if (typeof v === 'string') return v.length <= 500;
+      if (typeof v !== 'object') return true;
+      if (Array.isArray(dv) !== Array.isArray(v)) return false;
+      if (Array.isArray(v)) { if (v.length > 500) return false; var t = dv.length ? typeof dv[0] : null; for (var i = 0; i < v.length; i++) {
+          var it = v[i];
+          if (t ? typeof it !== t : false) return false;
+          if (!t && it && typeof it === 'object') { if (Array.isArray(it)) return false; for (var ik in it) if (it[ik] !== null && typeof it[ik] === 'object') return false; }
+        }
+        return true; }
+      for (var kk in dv) if (kk in v && !fits(v[kk], dv[kk])) return false;
+      return true;
+    };
     for (k in src) {
       if (!(k in DEFAULTS) || k === 'dash') continue;
       var dv = DEFAULTS[k], v = src[k];
-      if (typeof v === typeof dv && (typeof v !== 'object' || Array.isArray(v) === Array.isArray(dv))) s[k] = v;
+      if (k === 'courseColor' && !/^#[0-9a-fA-F]{3,8}$/.test(String(v))) continue;
+      if (k === 'modeFields' && v && typeof v === 'object' && !Array.isArray(v)) { // per-mode data fields: only known fields
+        var m = {};
+        for (var mk in v) if (Array.isArray(v[mk]) && v[mk].length <= 12 && v[mk].every(function (x) { return typeof x === 'string' && FIELDS[x]; })) m[mk] = v[mk];
+        s[k] = m; continue;
+      }
+      if (fits(v, dv)) s[k] = JSON.parse(JSON.stringify(v));
     }
+    if (Array.isArray(s.fields)) s.fields = s.fields.filter(function (x) { return FIELDS[x]; });
+    if (Array.isArray(s.freeFields)) s.freeFields = s.freeFields.filter(function (x) { return FIELDS[x]; });
+    if (reset && wasDash) this.call('setDash', 'false'); // (the unit on the car's screen: put the car's own page back)
     this.save(); this.applySettings(); this.worldKey = ''; this.lastHtml = {}; this.renderMedia(); this.renderAll();
     if (this.sheet === 'menu') this.renderSheet();
   };

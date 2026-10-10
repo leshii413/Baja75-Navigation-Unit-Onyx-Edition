@@ -1451,3 +1451,8 @@
 .txl-keys div { display: flex; flex-direction: column; padding: 0.3em 0; border-bottom: 0.08em solid rgba(255, 255, 255, 0.06); min-width: 0; }
 .txl-keys b { font-size: 0.95em; font-weight: 800; }
 .txl-keys span { font-size: 0.8em; color: var(--txl-dim); }
+
+/* ------------------------------------------------------------------ v3.9: what's new after an update */
+.txl-new { margin: 0.2em 0 0.8em; padding-left: 1.3em; text-align: left; line-height: 1.45; font-size: 1.05em; font-weight: 600; }
+.txl-new li { margin: 0.25em 0; }
+.txl-new li::marker { color: var(--txl-accent); }
