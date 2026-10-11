@@ -218,6 +218,15 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## Race paths for missions and BeamJoy (v3.11)
+
+Renaming a course `.json` to `race.json` doesn't work: it's the unit's own format (track points), and BeamNG's race system can't read it. Use **Courses → [course] → Export race path** instead. It writes two files in `settings/TreadXLGPS/race/<map>/`:
+
+- `<name>.race.json`: a BeamNG race path. Save it as `race.json` in your mission's folder, and check it in the game's race / mission editor.
+- `<name>.beamjoy.json`: a BeamJoy race. Paste it into the server's `Resources/Server/BeamJoyData/db/scenarii/<map>_races.json` list (server stopped; leave out any `id`), then start the server.
+
+You get a checkpoint every 75 m (MENU → Share → *Race path spacing*) plus every VCP with its radius; a course that ends where it starts becomes a loop. Pacenotes, speed zones and pits aren't included. **MENU → Share → Import race path** turns a `race.json`, a `.beamjoy.json` or BeamJoy's `<map>_races.json` back into a course. Export: every edition with Export GPX; import: every edition but Onyx.
+
 ## Playing on a BeamMP server (v3.10)
 
 If the server gives you the unit and you also have a copy from the in-game repository, both load and the unit can ask for a password or warn about two versions. The unit now tells you: **to fix this, remove any/all versions from your mods/repo folder**, then restart the game.

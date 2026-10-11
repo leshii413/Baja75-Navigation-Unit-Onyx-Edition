@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.10';
+  var VERSION = '3.11';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -40,7 +40,7 @@
   // the Onyx Edition: road and overland exploration in a metallic black unit; no races, Chase Map or unlocking
   var ONYX = EDITION === 'onyx';
   var ONYX_KINDS = { hazard: 1, danger: 1, medic: 1, note: 1, turn: 1 }; // what it marks (no race symbols)
-  var ONYX_OFF = { passReq: 1, passOk: 1, passDismiss: 1, raceGo: 1, raceRoute: 1, chase: 1, autoPn: 1, clearAutoPn: 1, serverPack: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, vidRecent: 1, siteCheck: 1, videoUnblock: 1, keyOpen: 1, unlockGo: 1 };
+  var ONYX_OFF = { exportRace: 1, importRace: 1, passReq: 1, passOk: 1, passDismiss: 1, raceGo: 1, raceRoute: 1, chase: 1, autoPn: 1, clearAutoPn: 1, serverPack: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, vidRecent: 1, siteCheck: 1, videoUnblock: 1, keyOpen: 1, unlockGo: 1 };
   // the free Common Edition: all four modes with the map, music, course import, Times, racing and 2 courses of your own;
   // no video, marking, waypoint / pacenote writing, Chase Map or sharing out (the game script refuses those too)
   var COMMON = EDITION === 'common' || EDITION === 'free'; // the free editions: no password (keys only), Adventure first
@@ -52,7 +52,7 @@
   function PLUS() { return !isCommon(); } // v3.4: the map / music / gallery extras: every edition but Free and Common (off the servers)
   function isFree() { return ED() === 'free'; } // the Free Edition off the servers: Adventure only, no REC, video or waypoint list, settings view-only
   var FREE_OFF = { setLoad: 1, setReset: 1, recToggle: 1, recStart: 1, undoMark: 1, vidFull: 1, vidPlay: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, resetTrip: 1, siteCheck: 1, videoUnblock: 1, reloadMap: 1, mediaSplit: 1 };
-  var COMMON_OFF = { mark: 1, chase: 1, autoPn: 1, clearAutoPn: 1, editNotes: 1, exportGpx: 1, serverPack: 1 }; // (video: yes, from v3.1.2)
+  var COMMON_OFF = { exportRace: 1, mark: 1, chase: 1, autoPn: 1, clearAutoPn: 1, editNotes: 1, exportGpx: 1, serverPack: 1 }; // (video: yes, from v3.1.2)
   // the Chase Edition's only symbols: pits, start / finish, VCPs, speed zone start / end
   var CHASE_KINDS = { pit: 1, start: 1, vcp: 1, zone: 1, zoneEnd: 1 };
   function shownKind(k) { return ED() !== 'chase' || !!CHASE_KINDS[k]; }
@@ -94,7 +94,8 @@
     courseColor: '#e8178a', sharpTurns: true, autoZoom: true, zoom: 0.8, showOthers: true, othersNames: true,
     chaseInterval: 0, markIcon: 'Tread_XL_icon_checkpoint.svg', markLabel: '', markLimit: 35, mapOpacity: 1,
     clockSource: 'pc', darkMode: ONYX ? 'on' : 'off', chipVcp: true, chipPit: true, sound: true, chimeVol: 0.6, // (the Onyx Edition starts on the night map)
-    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, mapFps: 60, seenVersion: '', // seenVersion: v3.9
+    alertsOnGps: true, alertsMode: 'faults', alertsFlash: true, passBtn: true, mapFps: 60, raceSpacing: 75, // raceSpacing: v3.11
+    seenVersion: '', // seenVersion: v3.9
     view3d: false, turnGuide: true, // view3d, turnGuide: v3.6
     // passBtn: v3.3; mapFps: v3.5
     mbarPos: 'bottom', cleanMap: false, mapBtns: true, actBtns: true, showFields: true, showSpeed: true, showScale: true, // v3.4
@@ -1232,6 +1233,7 @@
         var prevMap = this.mapName;
         this.routes = arr(d && d.routes); this.mapName = (d && d.map) || '';
         this.gpxFiles = arr(d && d.gpx);
+        this.raceFiles = arr(d && d.races); // v3.11: race paths to import
         this.paths = (d && d.paths) || {};
         this.real = (d && d.real) || {};
         this.commonCourses = (d && d.common) || null; // the Common Edition: your courses used of 2
@@ -1403,7 +1405,7 @@
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
   // v3.9: after an update, once: what's new (not on the very first start, not over the sign-in or another sheet)
-  var WHATS_NEW = ['On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
+  var WHATS_NEW = ['Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
     'MENU \u203a Display: Map frame rate, settings backup / restore / reset, and every key listed',
     'New data fields: GAP TO BEST, TIME TO FINISH, G-FORCE \u00b7 Button 4 = Clean map, Button 5 = night map'];
   P.whatsNew = function () {
@@ -1658,6 +1660,8 @@
         break;
       case 'copyCourse': if (sel) this.call('copyCourse', selArgs); break;
       case 'exportGpx': if (!this.guard('share', function () { this.openSheet('menu'); })) break; if (sel) this.call('exportGpx', selArgs); break;
+      case 'exportRace': if (!this.guard('share', function () { this.openSheet('menu'); })) break; if (sel) this.call('exportRacePath', selArgs + ', ' + luaNum(this.s.raceSpacing || 75)); break; // v3.11
+      case 'importRace': this.call('importRace', luaStr(v)); break;
       case 'serverPack': if (!this.guard('share', function () { this.openSheet('menu'); })) break; if (sel) this.call('addToServerPack', selArgs); break;
       case 'delCourse': {
         if (!sel) break;
@@ -1736,6 +1740,7 @@
         else if (k === 'alertsMode') this.s.alertsMode = v;
         else if (k === 'alertsFlash') this.s.alertsFlash = v === '1';
         else if (k === 'turnGuide') this.s.turnGuide = v === '1';
+        else if (k === 'raceSpacing') this.s.raceSpacing = [50, 75, 100, 150].indexOf(Number(v)) >= 0 ? Number(v) : 75;
         else if (k === 'mapFps') this.s.mapFps = v === '30' ? 30 : 60;
         else if (k === 'passBtn') { this.s.passBtn = v === '1'; this.renderPass(); }
         else if (k === 'cleanMap' || k === 'mapBtns' || k === 'actBtns' || k === 'showFields' || k === 'showSpeed' || k === 'showScale') { if (!PLUS()) return; this.s[k] = v === '1'; }
@@ -2738,7 +2743,7 @@
           (!readOnlySrc(src) && !isCommon() ? btn('editNotes', 'Notes') : '') +
           (!readOnlySrc(src) && ED() !== 'chase' && !isCommon() && !ONYX ? btn('autoPn', 'Auto pacenotes') : '') +
           (!readOnlySrc(src) && !isCommon() && info && info.autoPacenotes > 0 ? btn('clearAutoPn', self.armed === 'clearAutoPn:' + key ? 'Confirm remove' : 'Remove auto notes', 'danger' + (self.armed === 'clearAutoPn:' + key ? ' armed' : '')) : '') +
-          (isCommon() ? '' : btn('exportGpx', 'Export GPX') + (ONYX ? '' : btn('serverPack', 'Server pack'))) +
+          (isCommon() ? '' : btn('exportGpx', 'Export GPX') + (ONYX ? '' : btn('exportRace', 'Export race path') + btn('serverPack', 'Server pack'))) +
           (!readOnlySrc(src) ? btn('delCourse', armed ? 'Confirm delete' : G.trash, 'danger' + (armed ? ' armed' : '')) : '') + '</div>';
         // notes, picture and times (from the course's .notes.txt / .png / .jpg and your race times)
         if (info && (info.notes || info.image || typeof info.best === 'number' || info.pacenotes > 0 || info.author)) {
@@ -2817,9 +2822,16 @@
       return '<div class="txl-pathrow"><div class="grow"><div class="t2">' + label + '</div><div class="t1 mono path">' + esc(self.folderPath(kind)) + '</div></div>' +
         btn('openFolder', G.folder + '<span>Open</span>', 'iconbtn', kind) + '</div>';
     };
+    // v3.11: race paths (BeamNG race.json, BeamJoy races) back into courses
+    var races = ONYX ? '' : '<div class="txl-sec"><h3>Import race path</h3>' +
+      (arr(this.raceFiles).map(function (f) {
+        return '<div class="txl-row"><div class="grow"><div class="t1">' + esc(f.name) + '</div><div class="t2">' + esc((p.race || 'settings/TreadXLGPS/race') + '/' + f.file) + '</div></div>' + btn('importRace', 'Import', 'blue', f.file) + '</div>';
+      }).join('') || '<div class="txl-empty">Put a mission <b>race.json</b> (rename it, e.g. <b>my_race.race.json</b>), a <b>.beamjoy.json</b> or BeamJoy\u2019s <b>&lt;map&gt;_races.json</b> in the race folder, then press Refresh.</div>') +
+      (isCommon() ? '' : '<div class="txl-row"><div class="grow"><div class="t1">Race path spacing</div><div class="t2">Courses \u203a Export race path: a checkpoint this often, plus every VCP</div></div>' + seg('raceSpacing', this.s.raceSpacing || 75, [[50, '50 M'], [75, '75 M'], [100, '100 M'], [150, '150 M']]) + '</div>') +
+      '<div class="txl-btnrow">' + btn('refreshFiles', 'Refresh') + btn('openFolder', G.folder + '<span>Open race folder</span>', 'iconbtn', 'race') + '</div></div>';
     var importGpx = '<div class="txl-sec"><h3>Import GPX</h3>' +
       (gpx || '<div class="txl-empty">Put <b>.gpx</b> files in the GPX folder below, then press Refresh. Imported courses go to your courses.</div>') +
-      '<div class="txl-btnrow">' + btn('refreshFiles', 'Refresh') + btn('openFolder', G.folder + '<span>Open GPX folder</span>', 'iconbtn', 'gpx') + '</div></div>';
+      '<div class="txl-btnrow">' + btn('refreshFiles', 'Refresh') + btn('openFolder', G.folder + '<span>Open GPX folder</span>', 'iconbtn', 'gpx') + '</div></div>' + races;
     if (ONYX) return importGpx + '<div class="txl-sec"><h3>Export GPX</h3><div class="txl-note">Routes \u203a pick a route \u203a <b>Export GPX</b>: the track and every waypoint go into the GPX folder, with a map picture of the route.</div></div>' +
       '<div class="txl-sec"><h3>Where your files are</h3>' + where('Your routes (this map)', 'courses') + where('GPX files (this map)', 'gpx') + '</div>';
     if (isCommon()) return importGpx + '<div class="txl-sec"><h3>Server courses</h3><div class="txl-note">Courses from a BeamMP server you join show up under <b>Server courses</b> in MENU \u203a Courses by themselves.</div></div>' +

@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.10'
+local VERSION = '3.11'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -1052,13 +1052,13 @@ end
 local function sendList()
   local map = levelId()
   trigger('list', {
-    map = map, routes = listCourses(), gpx = listGpx(),
+    map = map, routes = listCourses(), gpx = listGpx(), races = M._race and M._race.list() or nil, -- races: v3.11
     -- the Common Edition: how many of its 2 courses are used
     common = (M._lock and M._lock.limited()) and { used = M._lock.courseCount(), max = M._lock.maxCourses(), free = PNK.EDITION == 'free' or nil, onyx = PNK.EDITION == 'onyx' or nil } or nil,
     loaded = course and { name = course.name, source = course.source } or nil,
     paths = {
       user = looksLikePath(userFolder()) and userFolder() or nil,
-      courses = COURSES:sub(2) .. '/' .. map, gpx = GPXDIR:sub(2) .. '/' .. map, pack = PACK:sub(2),
+      courses = COURSES:sub(2) .. '/' .. map, gpx = GPXDIR:sub(2) .. '/' .. map, pack = PACK:sub(2), race = USER_ROOT:sub(2) .. '/race/' .. map,
     },
     -- the same folders as they are on this player's disk
     real = { courses = realPath(COURSES .. '/' .. map), gpx = realPath(GPXDIR .. '/' .. map), pack = realPath(PACK) },
@@ -2877,7 +2877,7 @@ function M.openFolder(kind)
     return
   end
   local dir = kind == 'gpx' and (GPXDIR .. '/' .. levelId()) or kind == 'pack' and PACK or kind == 'log' and USER_ROOT
-    or kind == 'music' and USER_ROOT .. '/music' or kind == 'videos' and USER_ROOT .. '/videos' or myDir()
+    or kind == 'race' and USER_ROOT .. '/race/' .. levelId() or kind == 'music' and USER_ROOT .. '/music' or kind == 'videos' and USER_ROOT .. '/videos' or myDir()
   if openFolder(dir) then toast('Opening ' .. dir:sub(2), 'info')
   else toast('Open this folder in your BeamNG user folder: ' .. dir:sub(2), 'info') end
   log_('I', 'folder: ' .. dir)
@@ -3804,6 +3804,294 @@ function M.onDeserialized(data)
   if type(data.course) == 'string' then pcall(loadCourse, data.course, data.courseSource) end
 end
 
+-- ---------------------------------------------------------------- race paths (v3.11)
+-- A course file is the unit's own format (track points + waypoints): BeamNG's race system and BeamJoy can't read it,
+-- so renaming it race.json does nothing. Courses > [course] > Export race path writes, into settings/TreadXLGPS/race/<map>/:
+--   <name>.race.json     a BeamNG race path (the schema of gameplay/race/path.lua onSerialize: pathnodes, segments,
+--                        startNode / endNode, startPositions): a mission's race.json
+--   <name>.beamjoy.json  a BeamJoy race (the object BeamJoy saves in BeamJoyData/db/scenarii/<map>_races.json:
+--                        name, author, loopable, previewPosition, startPositions, steps of waypoints with parents)
+-- Nodes: one every RACE.spacing m along the course line (setting), every VCP with its own radius, each facing the
+-- direction of travel; the start / finish waypoint (or the first point) is the start, with a start position 10 m
+-- behind it; a course that ends within 30 m of its start is a loop. Pacenotes, speed zones and pits are left out.
+-- Import race path does the reverse for these files (and BeamJoy's own <map>_races.json), into your courses.
+do (function()
+local RACE = { DIR = USER_ROOT .. '/race', spacing = 75, NODE_R = 10, LOOP_M = 30, BACK_M = 10 }
+
+-- the quaternion of a heading in the game's two conventions: race.json start positions (quatFromDir: +Y along the
+-- direction) and vehicles / BeamJoy (the car's front is -Y): half a turn apart
+local function quatAlong(dx, dy, vehicle)
+  local th = vehicle and math.atan2(dx, -dy) or math.atan2(-dx, dy)
+  return { x = 0, y = 0, z = math.sin(th / 2), w = math.cos(th / 2) }
+end
+local function r3(v) return floor(v * 1000 + 0.5) / 1000 end
+
+-- the course as race nodes: { x, y, z, r, dx, dy, name, vcp, start }; closed = a loop
+function RACE.nodes(c, spacing)
+  spacing = tonumber(spacing) or RACE.spacing
+  if spacing < 20 then spacing = 20 elseif spacing > 500 then spacing = 500 end
+  local pts, n = c.pts, #c.pts
+  if n < 2 then return nil end
+  local function dirAt(s)
+    local i = 1
+    while i < n - 1 and c.cum[i + 1] < s do i = i + 1 end
+    local a, b = pts[i], pts[i + 1]
+    local L = sqrt((b.x - a.x) ^ 2 + (b.y - a.y) ^ 2)
+    if L < 1e-6 then return 0, 1 end
+    return (b.x - a.x) / L, (b.y - a.y) / L
+  end
+  local function pointAt(s)
+    local i = 1
+    while i < n - 1 and c.cum[i + 1] < s do i = i + 1 end
+    local a, b = pts[i], pts[i + 1]
+    local seg = c.cum[i + 1] - c.cum[i]
+    local t = seg > 0 and math.max(0, math.min(1, (s - c.cum[i]) / seg)) or 0
+    return a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, (a.z or 0) + ((b.z or 0) - (a.z or 0)) * t
+  end
+  local first, last = pts[1], pts[n]
+  local closed = sqrt((last.x - first.x) ^ 2 + (last.y - first.y) ^ 2) <= RACE.LOOP_M and c.length > RACE.LOOP_M * 4
+  -- the start: the start / finish waypoint's place on the line, else the first point
+  local s0 = 0
+  for _, w in ipairs(c.wpts) do if w.kind == 'start' and w.s then s0 = w.s; break end end
+  if not closed then s0 = 0 end -- (point to point: the course runs from its first point)
+  local items = {}
+  local endS = closed and c.length or c.length
+  local s = 0
+  while s < endS - spacing * 0.5 do items[#items + 1] = { s = s }; s = s + spacing end
+  if not closed then items[#items + 1] = { s = c.length, finish = true } end
+  -- the VCPs, each at its own place; a regular node within 20 m of one gives way to it
+  for _, w in ipairs(c.wpts) do
+    if w.kind == 'vcp' and w.s then
+      for i = #items, 1, -1 do if not items[i].finish and math.abs(items[i].s - w.s) < 20 and not items[i].vcp then table.remove(items, i) end end
+      items[#items + 1] = { s = w.s, vcp = w }
+    end
+  end
+  -- a loop starts at the start / finish: everything ordered from there round
+  for _, it in ipairs(items) do it.k = closed and ((it.s - s0) % c.length) or it.s end
+  table.sort(items, function(a, b) return a.k < b.k end)
+  if closed and items[1].k > 1 then table.insert(items, 1, { s = s0, k = 0 }) end
+  local out, vn = {}, 0
+  for i, it in ipairs(items) do
+    local x, y, z = pointAt(it.s)
+    local dx, dy = dirAt(it.s)
+    local name
+    if it.vcp then vn = vn + 1; name = 'VCP ' .. (it.vcp.label ~= '' and it.vcp.label or tostring(vn))
+    elseif i == 1 then name = 'Start'
+    elseif it.finish then name = 'Finish'
+    else name = 'Node ' .. i end
+    out[#out + 1] = { x = x, y = y, z = z, dx = dx, dy = dy, r = it.vcp and it.vcp.radius or RACE.NODE_R, name = name, vcp = it.vcp and true or nil }
+  end
+  -- names must be unique (BeamJoy checks them)
+  local seen = {}
+  for _, nd in ipairs(out) do
+    local base, k = nd.name, 1
+    while seen[nd.name] do k = k + 1; nd.name = base .. ' (' .. k .. ')' end
+    seen[nd.name] = true
+  end
+  return out, closed
+end
+
+-- the BeamNG race path (what path:onSerialize() writes)
+function RACE.toRaceJson(name, nodes, closed, author)
+  local pathnodes, segments, id = {}, {}, 0
+  for i, nd in ipairs(nodes) do
+    id = id + 1
+    nd.id = id
+    pathnodes[i] = { name = nd.name, mode = 'manual', navRadiusScale = 1, pos = { r3(nd.x), r3(nd.y), r3(nd.z) }, radius = nd.r,
+      normal = { r3(nd.dx), r3(nd.dy), 0 }, oldId = id, recovery = -1, reverseRecovery = -1, visible = true, useAsSplit = nd.vcp == true,
+      sidePadding = { 1, 3 }, customFields = { names = {}, types = {}, values = {}, tags = {} } }
+  end
+  local order = {}
+  for i = 1, #nodes do order[i] = nodes[i].id end
+  if closed then order[#order + 1] = nodes[1].id end
+  for i = 1, #order - 1 do
+    id = id + 1
+    segments[#segments + 1] = { name = 'Seg ' .. i .. '/' .. (i + 1), mode = 'waypoint', from = order[i], to = order[i + 1], oldId = id, capsules = {} }
+  end
+  local st = nodes[1]
+  id = id + 1
+  local sp = { name = 'Start', group = 'start', pos = { r3(st.x - st.dx * RACE.BACK_M), r3(st.y - st.dy * RACE.BACK_M), r3(st.z) }, oldId = id }
+  local q = quatAlong(st.dx, st.dy, false)
+  sp.rot = { r3(q.x), r3(q.y), r3(q.z), r3(q.w) }
+  return {
+    name = name, description = 'Exported from the Baja75 Navigation Unit', authors = author ~= '' and author or 'Baja75 Navigation Unit',
+    difficulty = 24, date = os.time(), defaultLaps = 1,
+    pathnodes = pathnodes, segments = segments, pacenotes = {}, startPositions = { sp },
+    startNode = nodes[1].id, endNode = closed and -1 or nodes[#nodes].id,
+    defaultStartPosition = sp.oldId, reverseStartPosition = -1, rollingStartPosition = -1, rollingReverseStartPosition = -1,
+    prefabs = {}, forwardPrefabs = {}, reversePrefabs = {}, simplifyAiPath = false, hideMission = false,
+    classification = { closed = closed, reversible = false, allowRollingStart = false, branching = false },
+  }
+end
+
+-- the BeamJoy race (a single line of steps: one waypoint each, its parent the step before; the first one's is "start")
+function RACE.toBeamJoy(name, nodes, closed, author)
+  local steps, prev = {}, 'start'
+  for i, nd in ipairs(nodes) do
+    if not (closed and i == 1) or #nodes == 1 then
+      local q = quatAlong(nd.dx, nd.dy, true)
+      steps[#steps + 1] = { { name = nd.name, parents = { prev }, pos = { x = r3(nd.x), y = r3(nd.y), z = r3(nd.z) },
+        rot = { x = r3(q.x), y = r3(q.y), z = r3(q.z), w = r3(q.w) }, radius = nd.r } }
+      prev = nd.name
+    end
+  end
+  if closed then -- a loop ends back at the start line
+    local st = nodes[1]
+    local q = quatAlong(st.dx, st.dy, true)
+    steps[#steps + 1] = { { name = st.name, parents = { prev }, pos = { x = r3(st.x), y = r3(st.y), z = r3(st.z) },
+      rot = { x = r3(q.x), y = r3(q.y), z = r3(q.z), w = r3(q.w) }, radius = st.r } }
+  end
+  local st = nodes[1]
+  local q = quatAlong(st.dx, st.dy, true)
+  local spos = { pos = { x = r3(st.x - st.dx * RACE.BACK_M), y = r3(st.y - st.dy * RACE.BACK_M), z = r3(st.z) }, rot = { x = r3(q.x), y = r3(q.y), z = r3(q.z), w = r3(q.w) } }
+  return {
+    name = name, author = author ~= '' and author or 'Baja75', enabled = true, loopable = closed == true,
+    previewPosition = { pos = { x = r3(st.x - st.dx * 40), y = r3(st.y - st.dy * 40), z = r3(st.z + 25) }, rot = spos.rot },
+    startPositions = { spos }, steps = steps,
+  }
+end
+
+function RACE.export(name, source, spacing)
+  if PNK.EDITION == 'onyx' then return end
+  name = safeName(name)
+  local dir = findCourse(name, source)
+  if not dir then toast('Course not found: ' .. name, 'warning'); return end
+  local pts, wpts = readCourseFiles(dir, name)
+  local c = buildCourse(name, pts, wpts)
+  if not c.hasLine then toast('This course has no course line to make a race from', 'warning'); return end
+  local nodes, closed = RACE.nodes(c, spacing)
+  if not nodes or #nodes < 2 then toast('Too short for a race path', 'warning'); return end
+  local author = ''
+  pcall(function() author = RunLog.driverName() or '' end)
+  local out = RACE.DIR .. '/' .. levelId() .. '/' .. name
+  local ok1 = writeJson(out .. '.race.json', RACE.toRaceJson(name, nodes, closed, author), true)
+  -- the nodes were numbered by toRaceJson; BeamJoy needs its own copy
+  local ok2 = writeJson(out .. '.beamjoy.json', RACE.toBeamJoy(name, nodes, closed, author), true)
+  if ok1 and ok2 then
+    toast(string.format('Race path exported: %d checkpoints%s, %s/%s', #nodes, closed and ' (loop)' or '', (RACE.DIR .. '/' .. levelId()):sub(2), name .. '.race.json / .beamjoy.json'), 'success')
+    RACE.readme()
+  else toast('Race path export failed', 'error') end
+  sendList()
+  return ok1 and ok2
+end
+
+function RACE.readme()
+  writeText(RACE.DIR .. '/_README.txt', table.concat({
+    'Baja75 Navigation Unit - race paths',
+    '',
+    'A course file (settings/TreadXLGPS/<map>/<name>.json) is the unit\'s own format: renaming it race.json does nothing.',
+    'Courses > [course] > Export race path writes two files here, in <map>/:',
+    '',
+    '<name>.race.json      a BeamNG race path. In a mission folder (gameplay/missions/<map>/<type>/<id>/) save it as race.json.',
+    '                      Open it in the game\'s Race Editor / Mission Editor to check it, and save it from there.',
+    '<name>.beamjoy.json   a BeamJoy race. On the server, stop it and open Resources/Server/BeamJoyData/db/scenarii/<map>_races.json',
+    '                      (make it if missing: the text [] ), paste the race object into the list (separate it from the others',
+    '                      with a comma; leave out any "id": BeamJoy gives one), save, start the server. Staff can then edit it',
+    '                      in BeamJoy\'s race editor.',
+    '',
+    'Checkpoints: one every 75 m along the line (MENU > Share > Race path spacing), every VCP with its radius, the start / finish',
+    'as the start (a course ending within 30 m of its start is a loop). Pacenotes, speed zones and pits are not included.',
+    'Import race path (MENU > Share) turns these files, a mission race.json, or BeamJoy\'s <map>_races.json back into a course.',
+  }, '\r\n'))
+end
+
+-- the files Import race path offers (this map's folder)
+function RACE.list()
+  local out = {}
+  for _, f in ipairs(listFiles(RACE.DIR .. '/' .. levelId(), '%.json$')) do out[#out + 1] = { file = f, name = f } end
+  return out
+end
+
+-- a race path back into a course: the nodes in driving order as the line (straight between them), VCPs where the
+-- node is a VCP (name "VCP ..." or a split), the first node as the start / finish
+local function nodesToCourse(list, closed)
+  local pts, wpts = {}, {}
+  for i, nd in ipairs(list) do
+    pts[#pts + 1] = { nd.x, nd.y, nd.z or 0 }
+    if i == 1 then wpts[#wpts + 1] = { x = nd.x, y = nd.y, z = nd.z or 0, icon = 'Tread_XL_icon_start_finish.svg', label = 'Start' }
+    elseif nd.vcp then wpts[#wpts + 1] = { x = nd.x, y = nd.y, z = nd.z or 0, icon = 'Tread_XL_icon_checkpoint.svg', label = tostring(nd.name or ''):gsub('^VCP%s*', ''):sub(1, 40), radius = nd.r } end
+  end
+  if closed and #list > 1 then pts[#pts + 1] = { list[1].x, list[1].y, list[1].z or 0 } end
+  return pts, wpts
+end
+local function num(v) v = tonumber(v); return v and v == v and v > -1e7 and v < 1e7 and v or nil end
+local function xyz(p)
+  if type(p) ~= 'table' then return nil end
+  local x, y, z = num(p.x or p[1]), num(p.y or p[2]), num(p.z or p[3]) or 0
+  if x and y then return x, y, z end
+end
+
+-- one race from a file: a BeamNG race path, a BeamJoy race, or BeamJoy's list of races (which = its name or index)
+function RACE.parse(t, which)
+  if type(t) ~= 'table' then return nil end
+  if t[1] ~= nil and type(t[1]) == 'table' and t[1].steps then -- BeamJoy's <map>_races.json: pick one
+    local pick = t[tonumber(which) or 1]
+    if type(which) == 'string' and not tonumber(which) then for _, r in ipairs(t) do if r.name == which then pick = r end end end
+    t = pick
+    if type(t) ~= 'table' then return nil end
+  end
+  if type(t.pathnodes) == 'table' and type(t.segments) == 'table' then -- BeamNG race path: follow the segments from the start
+    local byId, nextOf = {}, {}
+    for _, pn in ipairs(t.pathnodes) do
+      local x, y, z = xyz(pn.pos)
+      if x and pn.oldId then byId[pn.oldId] = { x = x, y = y, z = z, r = num(pn.radius), name = pn.name, vcp = pn.useAsSplit == true and tostring(pn.name or ''):match('^VCP') ~= nil } end
+    end
+    for _, sg in ipairs(t.segments) do if sg.from and sg.to and not nextOf[sg.from] then nextOf[sg.from] = sg.to end end
+    local start = byId[t.startNode] and t.startNode or (t.pathnodes[1] and t.pathnodes[1].oldId)
+    local list, seen, cur, closed = {}, {}, start, false
+    while cur and byId[cur] and not seen[cur] and #list < 5000 do
+      seen[cur] = true
+      list[#list + 1] = byId[cur]
+      cur = nextOf[cur]
+      if cur == start then closed = true end
+    end
+    return list, closed, t.name
+  end
+  if type(t.steps) == 'table' then -- BeamJoy: the first waypoint of each step
+    local list = {}
+    for _, step in ipairs(t.steps) do
+      local wp = type(step) == 'table' and step[1]
+      local x, y, z = xyz(wp and wp.pos)
+      if x then list[#list + 1] = { x = x, y = y, z = z, r = num(wp.radius), name = wp.name, vcp = tostring(wp.name or ''):match('^VCP') ~= nil } end
+    end
+    -- a loop's last step is back at the start
+    local closed = t.loopable == true
+    if closed and #list > 2 then
+      local a, b = list[1], list[#list]
+      if (a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 < 1 then list[#list] = nil end
+    end
+    local sp = t.startPositions and t.startPositions[1]
+    local sx, sy, sz = xyz(sp and sp.pos)
+    if sx then table.insert(list, 1, { x = sx, y = sy, z = sz, name = 'Start' }) end
+    return list, closed, t.name
+  end
+  return nil
+end
+
+function RACE.import(file, which)
+  file = tostring(file or '')
+  if not file:match('^[%w%-_ %.%(%)]+%.json$') or file:find('%.%.') then toast('Bad race file name', 'warning'); return end
+  local t = readJson(RACE.DIR .. '/' .. levelId() .. '/' .. file)
+  if type(t) ~= 'table' then toast('Could not read ' .. file, 'error'); return end
+  local list, closed, rname = RACE.parse(t, which)
+  if not list or #list < 2 then toast(file .. ' is not a race path the unit knows (BeamNG race.json or BeamJoy race)', 'warning'); return end
+  local pts, wpts = nodesToCourse(list, closed)
+  local base = safeName(rname or file:gsub('%.beamjoy%.json$', ''):gsub('%.race%.json$', ''):gsub('%.json$', ''))
+  if base == '' then base = 'race' end
+  local name = uniqueName(base)
+  local c = buildCourse(name, pts, wpts)
+  if saveCourseFiles(myDir(), name, c.pts, c.wpts) then
+    toast('Imported "' .. name .. '" (' .. #list .. ' checkpoints' .. (closed and ', a loop' or '') .. ')', 'success')
+    loadCourse(name, 'mine')
+  else toast('Import failed', 'error') end
+  return name
+end
+
+M._race = RACE
+M.exportRacePath = function(name, source, spacing) return RACE.export(name, source, spacing) end
+M.importRace = function(file, which) return RACE.import(file, which) end
+end)() end
+
 -- ---------------------------------------------------------------- locked parts off the Baja75 servers (v2.7.06, v2.7.07)
 -- Off the Baja75 BeamMP servers, until the password is entered:
 --   * recording a course: the full GPS and the Chase and Rally Editions (v2.7.07: the password unlocks it too)
@@ -3823,10 +4111,10 @@ local LOCK = {
   EVERY = 1, t = -1e9, server = nil, at = nil, password = false, dns = {}, allowed = {},
   -- not in the free Common Edition off the Baja75 servers: marking, waypoint / pacenote writing, the Chase Map, sharing out
   COMMON_OFF = { markWaypoint = 1, actionMark = 1, deleteWaypoint = 1, generatePacenotes = 1,
-    clearAutoPacenotes = 1, editNotes = 1, setChaseTarget = 1, actionChaseNext = 1, exportGpx = 1, addToServerPack = 1 }, -- (video: yes, v3.1.2)
+    clearAutoPacenotes = 1, editNotes = 1, setChaseTarget = 1, actionChaseNext = 1, exportGpx = 1, exportRacePath = 1, addToServerPack = 1 }, -- (video: yes, v3.1.2)
   -- the servers or the password (what = the locked part, for the password screen)
   NEED = { markWaypoint = 'mark', actionMark = 'mark', deleteWaypoint = 'wpts', setChaseTarget = 'chase', actionChaseNext = 'chase',
-    generatePacenotes = 'wpts', clearAutoPacenotes = 'wpts', exportGpx = 'share', addToServerPack = 'share' },
+    generatePacenotes = 'wpts', clearAutoPacenotes = 'wpts', exportGpx = 'share', exportRacePath = 'share', addToServerPack = 'share' },
 }
 
 -- the server check runs in every edition (on a Baja75 server every edition has every feature); the password is for
@@ -3944,7 +4232,7 @@ function LOCK.ask(what) trigger('locked', { what = what }) end
 LOCK.MAX_COURSES = 2   -- the Common Edition (the Free Edition: 1, LOCK.maxCourses)
 function LOCK.maxCourses() return PNK.EDITION == 'free' and 1 or PNK.EDITION == 'onyx' and 3 or LOCK.MAX_COURSES end
 function LOCK.limited() return LOCK.freeTier() or PNK.EDITION == 'onyx' end -- editions with a limit on courses of your own
-LOCK.SKIP_DIRS = { server = true, gpx = true, serverpack = true, times = true, sounds = true, music = true, videos = true, cache = true, rally = true }
+LOCK.SKIP_DIRS = { race = true, server = true, gpx = true, serverpack = true, times = true, sounds = true, music = true, videos = true, cache = true, rally = true }
 function LOCK.courseCount()
   local n = 0
   local ok, dirs = pcall(function() return FS:findFiles(USER_ROOT .. '/', '*', 0, false, true) end)
@@ -4301,6 +4589,8 @@ function LOCK.install()
   -- the Common Edition's 2 courses: importing a GPX and saving a copy add one too
   local imp, cpy = M.importGpx, M.copyCourse
   M.importGpx = function(...) if not LOCK.commonRoom('import') then return end return imp(...) end
+  local impR = M.importRace
+  if impR then M.importRace = function(...) if not LOCK.commonRoom('import') then return end return impR(...) end end
   M.copyCourse = function(...) if not LOCK.commonRoom('copy') then return end return cpy(...) end
   -- the Common Edition: those functions do nothing (a key pressed for one says so)
   for name in pairs(LOCK.COMMON_OFF) do
