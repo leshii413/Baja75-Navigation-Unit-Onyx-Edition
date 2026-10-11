@@ -218,6 +218,10 @@ The round button at the far right of the bezel, next to the green light (hover: 
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
 
+## Playing on a BeamMP server (v3.10)
+
+If the server gives you the unit and you also have a copy from the in-game repository, both load and the unit can ask for a password or warn about two versions. The unit now tells you: **to fix this, remove any/all versions from your mods/repo folder**, then restart the game.
+
 ## Polish (v3.9)
 
 - After an update the unit shows a short *What's new* once. Restoring settings from a file checks every value, so an old or edited file can't break anything.

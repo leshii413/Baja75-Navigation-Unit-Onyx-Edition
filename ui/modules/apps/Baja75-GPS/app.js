@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.9';
+  var VERSION = '3.10';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -1403,7 +1403,7 @@
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
   // v3.9: after an update, once: what's new (not on the very first start, not over the sign-in or another sheet)
-  var WHATS_NEW = ['3D map view (tap the compass), turn guidance and a live gap to your best run',
+  var WHATS_NEW = ['On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
     'MENU \u203a Display: Map frame rate, settings backup / restore / reset, and every key listed',
     'New data fields: GAP TO BEST, TIME TO FINISH, G-FORCE \u00b7 Button 4 = Clean map, Button 5 = night map'];
   P.whatsNew = function () {
@@ -1431,7 +1431,7 @@
   P.renderBanner = function () {
     var txt = '';
     if (this.hello) {
-      if (String(this.hello.version) !== VERSION) txt = 'Game script v' + this.hello.version + ' but screen v' + VERSION + ': more than one Baja75 Navigation Unit zip in your mods folder? Keep only the newest one and restart the game.';
+      if (String(this.hello.version) !== VERSION) txt = 'Game script v' + this.hello.version + ' but screen v' + VERSION + ': more than one Baja75 Navigation Unit installed. On a server: to fix this, remove any/all versions from your mods/repo folder (the server gives you its own). Otherwise keep only the newest zip in mods, then restart the game.';
       else if (this.hello.edition && this.hello.edition !== EDITION) txt = 'Two editions are installed (' + this.hello.edition + ' and ' + EDITION + '): keep only one Baja75 Navigation Unit zip in your mods folder and restart the game.';
     } else if (this.helloTries) {
       txt = this.hudSeen

@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.9'
+local VERSION = '3.10'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -3675,6 +3675,7 @@ local function tick()
   Dmg.tick()
   Snap.tick()
   if M._dash then M._dash.tick() end
+  if M._dup then pcall(M._dup.check) end -- (v3.10: the server's copy and a repo copy both loaded)
   if race then RunLog.hookVehicle(playerVehicle()) end
   M._tel.tick()
 end
@@ -4724,6 +4725,39 @@ M.passTest = function() return PASS.test() end
 M.onBeamMPServerLeave = function() PASS.leaveMp() end
 end)() end
 
+
+-- ---------------------------------------------------------------- two copies: the server's and the repo's (v3.10)
+-- On BeamMP the server's copy of the unit is in mods/multiplayer; a copy from the in-game repository sits in
+-- mods/repo. Both load, and the game script of one runs with the screen of the other (passwords asked on the
+-- server, the "Game script vX but screen vY" banner). Once per server visit: if both folders have the unit, a notice.
+do (function()
+local DUP = { at = -99, EVERY = 10, said = false }
+local function isUnit(n)
+  n = tostring(n or ''):lower()
+  return n:match('%.zip$') and (n:find('baja75', 1, true) or n:find('treadxl', 1, true) or n:find('tread_xl', 1, true) or n:find('navigationunit', 1, true)) and true or false
+end
+function DUP.find(dir)
+  local out = {}
+  for _, n in ipairs(listFiles(dir, '.')) do if isUnit(n) then out[#out + 1] = n end end
+  return out
+end
+function DUP.check()
+  local okm, mp = pcall(function() return MPCoreNetwork.isMPSession() end)
+  if not (okm and mp) then DUP.said = false; return end
+  if DUP.said or clock - DUP.at < DUP.EVERY then return end
+  DUP.at = clock
+  local server, repo = DUP.find('/mods/multiplayer'), DUP.find('/mods/repo')
+  if #server == 0 then return end -- the server doesn't hand it out: nothing can clash
+  DUP.said = true
+  if #repo == 0 then return end
+  log_('W', 'two copies: multiplayer ' .. table.concat(server, ', ') .. ' / repo ' .. table.concat(repo, ', '))
+  trigger('notice', { title = 'Two copies of the Navigation Unit',
+    text = 'This server gives you its own copy (' .. table.concat(server, ', ') .. ' in mods/multiplayer), and another copy is in your mods/repo folder (' ..
+      table.concat(repo, ', ') .. '). Both load at once, so the unit can ask for a password here or show the "two versions" warning. ' ..
+      'To fix this, remove any/all versions from the repo folder, then restart the game.' })
+end
+M._dup = DUP
+end)() end
 
 -- exposed for offline tests only
 M._test = {
