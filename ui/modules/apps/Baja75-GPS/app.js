@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.11';
+  var VERSION = '3.12';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -40,7 +40,7 @@
   // the Onyx Edition: road and overland exploration in a metallic black unit; no races, Chase Map or unlocking
   var ONYX = EDITION === 'onyx';
   var ONYX_KINDS = { hazard: 1, danger: 1, medic: 1, note: 1, turn: 1 }; // what it marks (no race symbols)
-  var ONYX_OFF = { exportRace: 1, importRace: 1, passReq: 1, passOk: 1, passDismiss: 1, raceGo: 1, raceRoute: 1, chase: 1, autoPn: 1, clearAutoPn: 1, serverPack: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, vidRecent: 1, siteCheck: 1, videoUnblock: 1, keyOpen: 1, unlockGo: 1 };
+  var ONYX_OFF = { exportRace: 1, importRace: 1, srvRaces: 1, srvRaceGet: 1, passReq: 1, passOk: 1, passDismiss: 1, raceGo: 1, raceRoute: 1, chase: 1, autoPn: 1, clearAutoPn: 1, serverPack: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, vidRecent: 1, siteCheck: 1, videoUnblock: 1, keyOpen: 1, unlockGo: 1 };
   // the free Common Edition: all four modes with the map, music, course import, Times, racing and 2 courses of your own;
   // no video, marking, waypoint / pacenote writing, Chase Map or sharing out (the game script refuses those too)
   var COMMON = EDITION === 'common' || EDITION === 'free'; // the free editions: no password (keys only), Adventure first
@@ -1241,6 +1241,16 @@
         if (this.sheet === 'menu') this.renderSheet();
         break;
       }
+      case EV + 'serverRaces': { // v3.12: the server's BeamJoy races for this map
+        var self2 = this;
+        if (d && d.asking) {
+          this.srvRaces = { asking: true };
+          clearTimeout(this.srvRacesT);
+          this.srvRacesT = setTimeout(function () { if (self2.srvRaces && self2.srvRaces.asking) { self2.srvRaces = { ok: false, why: 'noanswer' }; if (self2.sheet === 'menu') self2.renderSheet(); } }, 4000);
+        } else { clearTimeout(this.srvRacesT); this.srvRaces = d || null; }
+        if (this.sheet === 'menu') this.renderSheet();
+        break;
+      }
       case EV + 'course':
         this.course = d && d.name ? d : null;
         if (this.course) {
@@ -1405,7 +1415,7 @@
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
   // v3.9: after an update, once: what's new (not on the very first start, not over the sign-in or another sheet)
-  var WHATS_NEW = ['Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
+  var WHATS_NEW = ['MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
     'MENU \u203a Display: Map frame rate, settings backup / restore / reset, and every key listed',
     'New data fields: GAP TO BEST, TIME TO FINISH, G-FORCE \u00b7 Button 4 = Clean map, Button 5 = night map'];
   P.whatsNew = function () {
@@ -1662,6 +1672,8 @@
       case 'exportGpx': if (!this.guard('share', function () { this.openSheet('menu'); })) break; if (sel) this.call('exportGpx', selArgs); break;
       case 'exportRace': if (!this.guard('share', function () { this.openSheet('menu'); })) break; if (sel) this.call('exportRacePath', selArgs + ', ' + luaNum(this.s.raceSpacing || 75)); break; // v3.11
       case 'importRace': this.call('importRace', luaStr(v)); break;
+      case 'srvRaces': this.call('serverRaces', ''); break; // v3.12
+      case 'srvRaceGet': this.call('serverRaceGet', luaStr(v)); break;
       case 'serverPack': if (!this.guard('share', function () { this.openSheet('menu'); })) break; if (sel) this.call('addToServerPack', selArgs); break;
       case 'delCourse': {
         if (!sel) break;
@@ -2813,6 +2825,20 @@
     return where + '<div class="txl-sec"><h3>Timed runs \u00b7 ' + (log.total || list.length) + '</h3>' + rows + '</div>';
   };
 
+  // v3.12: the BeamJoy races of the BeamMP server you're on (with the Baja75 race alerts plugin v1.1 or newer)
+  P.srvRacesHtml = function () {
+    var r = this.srvRaces, body;
+    if (!r) body = '<div class="txl-note">On a BeamMP server: the server\u2019s BeamJoy races for this map, straight into your courses.</div>';
+    else if (r.asking) body = '<div class="txl-empty">Asking the server\u2026</div>';
+    else if (!r.ok) body = '<div class="txl-empty">' + (r.why === 'mp' ? 'Join a BeamMP server first.' : 'No answer: this server doesn\u2019t have the Baja75 race alerts plugin (v1.1 or newer).') + '</div>';
+    else if (r.map && r.mine && r.map !== r.mine) body = '<div class="txl-empty">The server is on <b>' + esc(r.map) + '</b>, you are on <b>' + esc(r.mine) + '</b>.</div>';
+    else if (!arr(r.races).length) body = '<div class="txl-empty">' + (r.beamjoy ? 'No BeamJoy races on this map yet.' : 'No BeamJoy races on this server for this map.') + '</div>';
+    else body = arr(r.races).map(function (x) {
+      return '<div class="txl-row"><div class="grow"><div class="t1">' + esc(x.name) + '</div><div class="t2">' + esc((x.steps || 0) + ' checkpoints' + (x.loop ? ' \u00b7 loop' : '') + (x.author ? ' \u00b7 ' + x.author : '')) + '</div></div>' + btn('srvRaceGet', 'Import', 'blue', x.name) + '</div>';
+    }).join('');
+    return '<h3 style="margin-top:10px">On this server</h3>' + body + '<div class="txl-btnrow">' + btn('srvRaces', r && r.ok ? 'Refresh server races' : 'Show server races') + '</div>';
+  };
+
   P.shareHtml = function () {
     var self = this, p = this.paths, gpxRoot = p.gpx ? String(p.gpx).replace(/\/[^\/]*$/, '') : 'settings/TreadXLGPS/gpx';
     var gpx = this.gpxFiles.map(function (f) {
@@ -2828,7 +2854,7 @@
         return '<div class="txl-row"><div class="grow"><div class="t1">' + esc(f.name) + '</div><div class="t2">' + esc((p.race || 'settings/TreadXLGPS/race') + '/' + f.file) + '</div></div>' + btn('importRace', 'Import', 'blue', f.file) + '</div>';
       }).join('') || '<div class="txl-empty">Put a mission <b>race.json</b> (rename it, e.g. <b>my_race.race.json</b>), a <b>.beamjoy.json</b> or BeamJoy\u2019s <b>&lt;map&gt;_races.json</b> in the race folder, then press Refresh.</div>') +
       (isCommon() ? '' : '<div class="txl-row"><div class="grow"><div class="t1">Race path spacing</div><div class="t2">Courses \u203a Export race path: a checkpoint this often, plus every VCP</div></div>' + seg('raceSpacing', this.s.raceSpacing || 75, [[50, '50 M'], [75, '75 M'], [100, '100 M'], [150, '150 M']]) + '</div>') +
-      '<div class="txl-btnrow">' + btn('refreshFiles', 'Refresh') + btn('openFolder', G.folder + '<span>Open race folder</span>', 'iconbtn', 'race') + '</div></div>';
+      '<div class="txl-btnrow">' + btn('refreshFiles', 'Refresh') + btn('openFolder', G.folder + '<span>Open race folder</span>', 'iconbtn', 'race') + '</div>' + this.srvRacesHtml() + '</div>';
     var importGpx = '<div class="txl-sec"><h3>Import GPX</h3>' +
       (gpx || '<div class="txl-empty">Put <b>.gpx</b> files in the GPX folder below, then press Refresh. Imported courses go to your courses.</div>') +
       '<div class="txl-btnrow">' + btn('refreshFiles', 'Refresh') + btn('openFolder', G.folder + '<span>Open GPX folder</span>', 'iconbtn', 'gpx') + '</div></div>' + races;
@@ -4381,7 +4407,7 @@
 
   // ---------------------------------------------------------------- Angular glue
   var HOOKS = [EV + 'pass', EV + 'gallery', EV + 'unitSettings', EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
-    EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login', EV + 'dashState'];
+    EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login', EV + 'dashState', EV + 'serverRaces'];
   TreadXLApp.HOOKS = HOOKS;
 
   if (window.angular && angular.module) {

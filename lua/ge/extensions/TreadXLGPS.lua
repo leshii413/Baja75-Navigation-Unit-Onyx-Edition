@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.11'
+local VERSION = '3.12'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -2084,6 +2084,23 @@ function RunLog.hookVehicle(pv)
   RunLog.hookedId, RunLog.hookedAt = id, clock -- again every 5 s: a reloaded vehicle (Ctrl+R) starts without it
   pcall(function() pv:queueLuaCommand(RunLog.VLUA) end)
 end
+-- v3.12: "recover to last road" (the game's spawn.teleportToLastRoad, from the radial menu / quick access) counts as a
+-- recovery, not a reset. Wrapped once; the game's own function still does the move.
+function RunLog.hookLastRoad()
+  local sp = rawget(_G, 'spawn')
+  if type(sp) ~= 'table' or type(sp.teleportToLastRoad) ~= 'function' or sp.__txl then return end
+  sp.__txl = true
+  local orig = sp.teleportToLastRoad
+  sp.teleportToLastRoad = function(veh, ...)
+    pcall(function()
+      local pv = playerVehicle()
+      if pv and (veh == nil or veh == pv or (veh.getID and veh:getID() == pv:getID())) then
+        RunLog.recoverStart('lastRoad'); RunLog.recoverStop()
+      end
+    end)
+    return orig(veh, ...)
+  end
+end
 function RunLog.recoverStart(src)
   if RunLog.recovering and RunLog.recoverAt and clock - RunLog.recoverAt < 30 then return end -- the same recovery
   RunLog.recovering, RunLog.recoverAt = true, clock
@@ -3676,7 +3693,7 @@ local function tick()
   Snap.tick()
   if M._dash then M._dash.tick() end
   if M._dup then pcall(M._dup.check) end -- (v3.10: the server's copy and a repo copy both loaded)
-  if race then RunLog.hookVehicle(playerVehicle()) end
+  if race then RunLog.hookVehicle(playerVehicle()); RunLog.hookLastRoad() end
   M._tel.tick()
 end
 
@@ -3813,7 +3830,8 @@ end
 --                        name, author, loopable, previewPosition, startPositions, steps of waypoints with parents)
 -- Nodes: one every RACE.spacing m along the course line (setting), every VCP with its own radius, each facing the
 -- direction of travel; the start / finish waypoint (or the first point) is the start, with a start position 10 m
--- behind it; a course that ends within 30 m of its start is a loop. Pacenotes, speed zones and pits are left out.
+-- behind it; a course that ends within 30 m of its start is a loop. Pacenotes go into race.json (v3.12, each on its
+-- segment with its words); speed zones and pits are left out.
 -- Import race path does the reverse for these files (and BeamJoy's own <map>_races.json), into your courses.
 do (function()
 local RACE = { DIR = USER_ROOT .. '/race', spacing = 75, NODE_R = 10, LOOP_M = 30, BACK_M = 10 }
@@ -3879,8 +3897,22 @@ function RACE.nodes(c, spacing)
     elseif i == 1 then name = 'Start'
     elseif it.finish then name = 'Finish'
     else name = 'Node ' .. i end
-    out[#out + 1] = { x = x, y = y, z = z, dx = dx, dy = dy, r = it.vcp and it.vcp.radius or RACE.NODE_R, name = name, vcp = it.vcp and true or nil }
+    out[#out + 1] = { x = x, y = y, z = z, dx = dx, dy = dy, r = it.vcp and it.vcp.radius or RACE.NODE_R, name = name, vcp = it.vcp and true or nil, k = it.k }
   end
+  -- v3.12: the course's pacenotes, each with its place along the race (k) and its words (the game's race pacenotes)
+  local pns = {}
+  for _, w in ipairs(c.pacenotes or {}) do
+    if w.s then
+      local txt = ''
+      pcall(function() txt = PN and PN.text(w.pn) or '' end)
+      if txt ~= '' then
+        local x, y, z = pointAt(w.s)
+        local dx, dy = dirAt(w.s)
+        pns[#pns + 1] = { x = w.x or x, y = w.y or y, z = w.z or z, dx = dx, dy = dy, note = txt, k = closed and ((w.s - s0) % c.length) or w.s }
+      end
+    end
+  end
+  table.sort(pns, function(a, b) return a.k < b.k end)
   -- names must be unique (BeamJoy checks them)
   local seen = {}
   for _, nd in ipairs(out) do
@@ -3888,11 +3920,11 @@ function RACE.nodes(c, spacing)
     while seen[nd.name] do k = k + 1; nd.name = base .. ' (' .. k .. ')' end
     seen[nd.name] = true
   end
-  return out, closed
+  return out, closed, pns
 end
 
 -- the BeamNG race path (what path:onSerialize() writes)
-function RACE.toRaceJson(name, nodes, closed, author)
+function RACE.toRaceJson(name, nodes, closed, author, pns)
   local pathnodes, segments, id = {}, {}, 0
   for i, nd in ipairs(nodes) do
     id = id + 1
@@ -3908,6 +3940,16 @@ function RACE.toRaceJson(name, nodes, closed, author)
     id = id + 1
     segments[#segments + 1] = { name = 'Seg ' .. i .. '/' .. (i + 1), mode = 'waypoint', from = order[i], to = order[i + 1], oldId = id, capsules = {} }
   end
+  -- pacenotes: each on the segment it falls in (the segment from the last node before it)
+  local pacenotes, nseg = {}, #order - 1
+  for i, pn in ipairs(pns or {}) do
+    local seg = 1
+    for j = 1, #nodes do if (nodes[j].k or 0) <= pn.k then seg = j end end
+    if seg > nseg then seg = nseg end
+    id = id + 1
+    pacenotes[i] = { name = 'Pacenote ' .. i, pos = { r3(pn.x), r3(pn.y), r3(pn.z) }, radius = 8, normal = { r3(pn.dx), r3(pn.dy), 0 },
+      oldId = id, note = pn.note, segment = nseg >= 1 and segments[seg].oldId or -1 }
+  end
   local st = nodes[1]
   id = id + 1
   local sp = { name = 'Start', group = 'start', pos = { r3(st.x - st.dx * RACE.BACK_M), r3(st.y - st.dy * RACE.BACK_M), r3(st.z) }, oldId = id }
@@ -3916,7 +3958,7 @@ function RACE.toRaceJson(name, nodes, closed, author)
   return {
     name = name, description = 'Exported from the Baja75 Navigation Unit', authors = author ~= '' and author or 'Baja75 Navigation Unit',
     difficulty = 24, date = os.time(), defaultLaps = 1,
-    pathnodes = pathnodes, segments = segments, pacenotes = {}, startPositions = { sp },
+    pathnodes = pathnodes, segments = segments, pacenotes = pacenotes, startPositions = { sp },
     startNode = nodes[1].id, endNode = closed and -1 or nodes[#nodes].id,
     defaultStartPosition = sp.oldId, reverseStartPosition = -1, rollingStartPosition = -1, rollingReverseStartPosition = -1,
     prefabs = {}, forwardPrefabs = {}, reversePrefabs = {}, simplifyAiPath = false, hideMission = false,
@@ -3959,12 +4001,12 @@ function RACE.export(name, source, spacing)
   local pts, wpts = readCourseFiles(dir, name)
   local c = buildCourse(name, pts, wpts)
   if not c.hasLine then toast('This course has no course line to make a race from', 'warning'); return end
-  local nodes, closed = RACE.nodes(c, spacing)
+  local nodes, closed, pns = RACE.nodes(c, spacing)
   if not nodes or #nodes < 2 then toast('Too short for a race path', 'warning'); return end
   local author = ''
   pcall(function() author = RunLog.driverName() or '' end)
   local out = RACE.DIR .. '/' .. levelId() .. '/' .. name
-  local ok1 = writeJson(out .. '.race.json', RACE.toRaceJson(name, nodes, closed, author), true)
+  local ok1 = writeJson(out .. '.race.json', RACE.toRaceJson(name, nodes, closed, author, pns), true)
   -- the nodes were numbered by toRaceJson; BeamJoy needs its own copy
   local ok2 = writeJson(out .. '.beamjoy.json', RACE.toBeamJoy(name, nodes, closed, author), true)
   if ok1 and ok2 then
@@ -3990,7 +4032,7 @@ function RACE.readme()
     '                      in BeamJoy\'s race editor.',
     '',
     'Checkpoints: one every 75 m along the line (MENU > Share > Race path spacing), every VCP with its radius, the start / finish',
-    'as the start (a course ending within 30 m of its start is a loop). Pacenotes, speed zones and pits are not included.',
+    'as the start (a course ending within 30 m of its start is a loop). Pacenotes go into race.json; speed zones and pits are not included.',
     'Import race path (MENU > Share) turns these files, a mission race.json, or BeamJoy\'s <map>_races.json back into a course.',
   }, '\r\n'))
 end
@@ -4087,9 +4129,74 @@ function RACE.import(file, which)
   return name
 end
 
+-- v3.12: races on this server. With the Baja75 race alerts plugin (v1.1) on a BeamMP server, MENU > Share > Import
+-- race path lists the server's BeamJoy races for this map; Import fetches one (in parts), saves it as
+-- "<name> (server).beamjoy.json" in the race folder and imports it like a file.
+RACE.srv = { parts = nil }
+local function isMp()
+  local okm, mp = pcall(function() return MPCoreNetwork.isMPSession() end)
+  return okm and mp == true and type(TriggerServerEvent) == 'function'
+end
+function RACE.handlers()
+  if type(AddEventHandler) ~= 'function' then return end
+  pcall(AddEventHandler, 'B75Race_List', function(js) RACE.onList(js) end, 'TreadXLGPS_race')
+  pcall(AddEventHandler, 'B75Race_Part', function(js) RACE.onPart(js) end, 'TreadXLGPS_race')
+end
+function RACE.serverList()
+  if not isMp() then trigger('serverRaces', { ok = false, why = 'mp' }); return end
+  RACE.handlers()
+  pcall(function() TriggerServerEvent('B75Race_List', '') end)
+  trigger('serverRaces', { asking = true })
+end
+function RACE.onList(js)
+  local ok, t = pcall(jsonDecode, js)
+  if not ok or type(t) ~= 'table' then return end
+  local list = {}
+  for i, r in ipairs(type(t.races) == 'table' and t.races or {}) do
+    if i > 60 then break end
+    if type(r) == 'table' and type(r.name) == 'string' then
+      list[#list + 1] = { name = r.name:sub(1, 60), steps = tonumber(r.steps) or 0, loop = r.loop == true, author = type(r.author) == 'string' and r.author:sub(1, 40) or nil }
+    end
+  end
+  trigger('serverRaces', { ok = true, map = type(t.map) == 'string' and t.map or nil, mine = levelId(), beamjoy = t.beamjoy == true, races = list })
+end
+function RACE.serverGet(name)
+  name = tostring(name or '')
+  if name == '' or #name > 60 or not isMp() then return end
+  RACE.handlers()
+  RACE.srv = { want = name, parts = {}, id = nil, size = 0, at = clock }
+  pcall(function() TriggerServerEvent('B75Race_Get', jsonEncode({ name = name })) end)
+  toast('Getting "' .. name .. '" from the server...', 'info')
+end
+function RACE.onPart(js)
+  local w = RACE.srv
+  if not w or not w.want or type(js) ~= 'string' or #js > 30000 then return end
+  local ok, t = pcall(jsonDecode, js)
+  if not ok or type(t) ~= 'table' then return end
+  if t.err then
+    toast(t.err == 'too_big' and 'That race is too big to send' or ('The server has no race "' .. w.want .. '" now'), 'warning')
+    RACE.srv = { parts = nil }; return
+  end
+  local id, i, n = tonumber(t.id), tonumber(t.i), tonumber(t.n)
+  if not id or not i or not n or n < 1 or n > 25 or i < 1 or i > n or type(t.d) ~= 'string' then return end
+  if w.id ~= id then w.id, w.parts, w.size, w.n = id, {}, 0, n end
+  if not w.parts[i] then w.parts[i] = t.d; w.size = w.size + #t.d end
+  if w.size > 400000 then RACE.srv = { parts = nil }; return end
+  for k = 1, w.n do if not w.parts[k] then return end end
+  local ok2, race = pcall(jsonDecode, table.concat(w.parts))
+  RACE.srv = { parts = nil }
+  if not ok2 or type(race) ~= 'table' or type(race.steps) ~= 'table' then toast('The race from the server could not be read', 'error'); return end
+  local base = safeName(w.want)
+  local file = (base ~= '' and base or 'race') .. ' (server).beamjoy.json'
+  if not writeJson(RACE.DIR .. '/' .. levelId() .. '/' .. file, race, true) then toast('Could not save the server race', 'error'); return end
+  return M.importRace(file)
+end
+
 M._race = RACE
 M.exportRacePath = function(name, source, spacing) return RACE.export(name, source, spacing) end
 M.importRace = function(file, which) return RACE.import(file, which) end
+M.serverRaces = function() return RACE.serverList() end
+M.serverRaceGet = function(name) return RACE.serverGet(name) end
 end)() end
 
 -- ---------------------------------------------------------------- locked parts off the Baja75 servers (v2.7.06, v2.7.07)
@@ -4591,6 +4698,8 @@ function LOCK.install()
   M.importGpx = function(...) if not LOCK.commonRoom('import') then return end return imp(...) end
   local impR = M.importRace
   if impR then M.importRace = function(...) if not LOCK.commonRoom('import') then return end return impR(...) end end
+  local srvG = M.serverRaceGet -- v3.12 (the import itself goes through M.importRace above)
+  if srvG then M.serverRaceGet = function(...) if PNK.EDITION == 'onyx' then return end return srvG(...) end end
   M.copyCourse = function(...) if not LOCK.commonRoom('copy') then return end return cpy(...) end
   -- the Common Edition: those functions do nothing (a key pressed for one says so)
   for name in pairs(LOCK.COMMON_OFF) do
@@ -4813,7 +4922,7 @@ end
 function D.state() trigger('dashState', { on = D.on, screen = D.tag ~= nil }) end
 -- every event the HUD app gets goes to the screen too (as ['TreadXLGPS.name', data])
 -- not for the screen: the unit's keys and one-off replies (the screen copy would act on them a second time: music, videos)
-D.SKIP = { dashState = true, gallery = true, unitSettings = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
+D.SKIP = { serverRaces = true, dashState = true, gallery = true, unitSettings = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
 M._dashFwd = function(name, data)
   if not (D.on and D.tag) or D.SKIP[name] then return end
   -- positions: 5 a second is plenty for the car's screen, and it can't fall behind (v3.3)

@@ -225,7 +225,11 @@ Renaming a course `.json` to `race.json` doesn't work: it's the unit's own forma
 - `<name>.race.json`: a BeamNG race path. Save it as `race.json` in your mission's folder, and check it in the game's race / mission editor.
 - `<name>.beamjoy.json`: a BeamJoy race. Paste it into the server's `Resources/Server/BeamJoyData/db/scenarii/<map>_races.json` list (server stopped; leave out any `id`), then start the server.
 
-You get a checkpoint every 75 m (MENU → Share → *Race path spacing*) plus every VCP with its radius; a course that ends where it starts becomes a loop. Pacenotes, speed zones and pits aren't included. **MENU → Share → Import race path** turns a `race.json`, a `.beamjoy.json` or BeamJoy's `<map>_races.json` back into a course. Export: every edition with Export GPX; import: every edition but Onyx.
+You get a checkpoint every 75 m (MENU → Share → *Race path spacing*) plus every VCP with its radius; a course that ends where it starts becomes a loop. Your pacenotes go into the race.json too (v3.12); speed zones and pits aren't included. **MENU → Share → Import race path** turns a `race.json`, a `.beamjoy.json` or BeamJoy's `<map>_races.json` back into a course. Export: every edition with Export GPX; import: every edition but Onyx.
+
+**Races on the server (v3.12):** on a BeamMP server that runs the Baja75 race alerts plugin (v1.1 or newer), MENU → Share → Import race path → *Show server races* lists the server's BeamJoy races for your map; **Import** brings one straight into your courses (a copy is kept in the race folder as `<name> (server).beamjoy.json`).
+
+**Recover to last road** (the game's radial menu / quick access) now counts as a recovery in your run, not a reset (v3.12).
 
 ## Playing on a BeamMP server (v3.10)
 
