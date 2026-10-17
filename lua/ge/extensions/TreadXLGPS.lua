@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.13'
+local VERSION = '3.14'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -4238,8 +4238,8 @@ end)() end
 -- The Common Edition has no locks, and no recording, marking, Chase Map, sharing out or video at all (COMMON_OFF). (Inside a function called once: the main chunk is at Lua's 200-local limit.)
 do (function()
 local LOCK = {
-  SERVERS = { '199.127.61.187:30984', '199.127.61.187:30997', '162.220.15.150:27035' },
-  NAMES = { { 6, 'e5219330682dc173' }, { 6, '7e690f69b9ab4a88' }, { 9, '61b5de1f53e2165c' }, { 9, '39ffe272dba64485' } }, -- { length, digest }: the server-name words
+  SERVERS = { '199.127.61.187:30984', '199.127.61.187:30997', '162.220.15.150:27035', 'node-de5.connecthosting.net:30864' }, -- (a host name is also matched by its address)
+  NAMES = { { 9, '72c9a7e8495595e1' }, { 6, '48b5d05afa1666ed' }, { 11, '2365a3d472b11426' } }, -- v3.14: lower case, letters and digits only -- { length, digest }: the server-name words
   nameSeen = {},
   DIGEST = '61b5de1f53e2165c',
   EVERY = 1, t = -1e9, server = nil, at = nil, password = false, dns = {}, allowed = {},
@@ -4287,7 +4287,14 @@ end
 -- is looked at once)
 function LOCK.isBaja(addr, name)
   if addr and LOCK.allowed[addr] then return true end
-  local plain = tostring(name or ''):gsub('%^.', ''):sub(1, 120)
+  if addr then -- v3.14: a server listed by host name, joined by its address
+    for _, s in ipairs(LOCK.SERVERS) do
+      local h, p = s:match('^(.-):(%d+)$')
+      if h and h:match('%a') and (LOCK.host(h) .. ':' .. p) == addr then LOCK.allowed[addr] = true; return true end
+    end
+  end
+  -- v3.14: any capitalisation and punctuation ("Baja-75", "LESHII 413"): lower case, letters and digits only
+  local plain = tostring(name or ''):gsub('%^.', ''):sub(1, 120):lower():gsub('[^%w]', '')
   if LOCK.nameSeen[plain] == nil then
     local hit = false
     for _, n in ipairs(LOCK.NAMES) do
