@@ -229,6 +229,8 @@ You get a checkpoint every 75 m (MENU → Share → *Race path spacing*) plus ev
 
 **Races on the server (v3.12):** on a BeamMP server that runs the Baja75 race alerts plugin (v1.1 or newer), MENU → Share → Import race path → *Show server races* lists the server's BeamJoy races for your map; **Import** brings one straight into your courses (a copy is kept in the race folder as `<name> (server).beamjoy.json`).
 
+**Server leaderboard (v3.13):** MENU → Times → *Server leaderboard* shows every driver's best time on the course you have loaded, on servers with the Baja75 results plugin v1.1 or newer. After your run is saved on the server you get your place right away.
+
 **Recover to last road** (the game's radial menu / quick access) now counts as a recovery in your run, not a reset (v3.12).
 
 ## Playing on a BeamMP server (v3.10)

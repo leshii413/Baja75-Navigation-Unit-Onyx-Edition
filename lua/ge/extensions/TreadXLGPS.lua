@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.12'
+local VERSION = '3.13'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -1948,12 +1948,39 @@ function RunLog.onAck(data)
   local name = RunLog.clean(t.course, 60)
   toast(string.format(a[2], name ~= '' and name or 'this run'), a[1])
 end
+-- v3.13: a server course's leaderboard (the Baja75 server results plugin v1.1): asked for from MENU > Times,
+-- and sent by the server after each saved run
+function RunLog.onBoard(data)
+  local ok, t = pcall(jsonDecode, data)
+  if not ok or type(t) ~= 'table' then return end
+  local rows = {}
+  for i, r in ipairs(type(t.rows) == 'table' and t.rows or {}) do
+    if i > 10 then break end
+    if type(r) == 'table' then
+      rows[#rows + 1] = { rank = tonumber(r.rank) or i, driver = RunLog.clean(r.driver, 40), number = RunLog.clean(r.number, 8),
+        time = RunLog.clean(r.time, 20), vehicle = RunLog.clean(r.vehicle, 60) }
+    end
+  end
+  local me = type(t.me) == 'table' and { rank = tonumber(t.me.rank), time = RunLog.clean(t.me.time, 20) } or nil
+  trigger('serverBoard', { course = RunLog.clean(t.course, 60), map = RunLog.clean(t.map, 64), rows = rows, total = tonumber(t.total) or #rows, me = me, none = t.none == true })
+end
+function RunLog.askBoard()
+  if PNK.EDITION == 'onyx' then return end
+  local ok, mp = pcall(function() return MPCoreNetwork.isMPSession() end)
+  if not (ok and mp) or type(TriggerServerEvent) ~= 'function' or type(jsonEncode) ~= 'function' then trigger('serverBoard', { why = 'mp' }); return end
+  if not (course and course.name) then trigger('serverBoard', { why = 'course' }); return end
+  if type(AddEventHandler) == 'function' then pcall(AddEventHandler, 'Baja75Results_board', RunLog.onBoard, 'TreadXLGPS_board') end
+  local msg = { map = levelId(), course = course.name, driver = RunLog.driverName(), number = RunLog.number ~= '' and RunLog.number or nil }
+  pcall(function() TriggerServerEvent('Baja75Results_top', jsonEncode(msg)) end)
+  trigger('serverBoard', { asking = true, course = course.name })
+end
+M.serverBoard = function() return RunLog.askBoard() end
 function RunLog.toServer(run)
   if not RunLog.SEND[PNK.EDITION] or type(TriggerServerEvent) ~= 'function' or type(jsonEncode) ~= 'function' then return false end
   local ok, mp = pcall(function() return MPCoreNetwork.isMPSession() end)
   if not (ok and mp) then return false end
   if not (race and course and course.name == race.name and (course.length or 0) > 0) then return false end
-  if type(AddEventHandler) == 'function' then pcall(AddEventHandler, 'Baja75Results_ack', RunLog.onAck, 'TreadXLGPS_results') end
+  if type(AddEventHandler) == 'function' then pcall(AddEventHandler, 'Baja75Results_ack', RunLog.onAck, 'TreadXLGPS_results'); pcall(AddEventHandler, 'Baja75Results_board', RunLog.onBoard, 'TreadXLGPS_board') end
   local msg = { v = 1, ed = PNK.EDITION, unit = VERSION, map = levelId(), course = race.name, length = r2(course.length), lines = run }
   local sent = pcall(function() TriggerServerEvent('Baja75Results_run', jsonEncode(msg)) end)
   if not sent then log_('W', 'could not send the run to the server') end
@@ -4922,7 +4949,7 @@ end
 function D.state() trigger('dashState', { on = D.on, screen = D.tag ~= nil }) end
 -- every event the HUD app gets goes to the screen too (as ['TreadXLGPS.name', data])
 -- not for the screen: the unit's keys and one-off replies (the screen copy would act on them a second time: music, videos)
-D.SKIP = { serverRaces = true, dashState = true, gallery = true, unitSettings = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
+D.SKIP = { serverBoard = true, serverRaces = true, dashState = true, gallery = true, unitSettings = true, cmd = true, clipboard = true, snapshot = true, runLogExported = true, videoHit = true, videoServer = true }
 M._dashFwd = function(name, data)
   if not (D.on and D.tag) or D.SKIP[name] then return end
   -- positions: 5 a second is plenty for the car's screen, and it can't fall behind (v3.3)

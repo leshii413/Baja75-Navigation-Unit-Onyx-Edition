@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.12';
+  var VERSION = '3.13';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
@@ -40,7 +40,7 @@
   // the Onyx Edition: road and overland exploration in a metallic black unit; no races, Chase Map or unlocking
   var ONYX = EDITION === 'onyx';
   var ONYX_KINDS = { hazard: 1, danger: 1, medic: 1, note: 1, turn: 1 }; // what it marks (no race symbols)
-  var ONYX_OFF = { exportRace: 1, importRace: 1, srvRaces: 1, srvRaceGet: 1, passReq: 1, passOk: 1, passDismiss: 1, raceGo: 1, raceRoute: 1, chase: 1, autoPn: 1, clearAutoPn: 1, serverPack: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, vidRecent: 1, siteCheck: 1, videoUnblock: 1, keyOpen: 1, unlockGo: 1 };
+  var ONYX_OFF = { exportRace: 1, importRace: 1, srvRaces: 1, srvRaceGet: 1, passReq: 1, passOk: 1, srvBoard: 1, passDismiss: 1, raceGo: 1, raceRoute: 1, chase: 1, autoPn: 1, clearAutoPn: 1, serverPack: 1, vidPaste: 1, vidBrowser: 1, vidGo: 1, vidRecent: 1, siteCheck: 1, videoUnblock: 1, keyOpen: 1, unlockGo: 1 };
   // the free Common Edition: all four modes with the map, music, course import, Times, racing and 2 courses of your own;
   // no video, marking, waypoint / pacenote writing, Chase Map or sharing out (the game script refuses those too)
   var COMMON = EDITION === 'common' || EDITION === 'free'; // the free editions: no password (keys only), Adventure first
@@ -1173,6 +1173,14 @@
         else this.toast('Pasted - not a YouTube link: press WEB to open it in your browser', 'info');
         break;
       }
+      case EV + 'serverBoard': { // v3.13: a server course's leaderboard
+        var self3 = this;
+        clearTimeout(this.boardT);
+        this.board = d || null;
+        if (d && d.asking) this.boardT = setTimeout(function () { if (self3.board && self3.board.asking) { self3.board = { why: 'noanswer' }; if (self3.sheet === 'menu' && self3.menuTab === 'times') self3.renderSheet(); } }, 4000);
+        if (this.sheet === 'menu' && this.menuTab === 'times') this.renderSheet();
+        break;
+      }
       case EV + 'runLog':
         this.runLog = d || {};
         this.runLog.entries = arr(this.runLog.entries);
@@ -1415,7 +1423,7 @@
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
   // v3.9: after an update, once: what's new (not on the very first start, not over the sign-in or another sheet)
-  var WHATS_NEW = ['MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
+  var WHATS_NEW = ['MENU \u203a Times \u203a Server leaderboard: every driver\u2019s best time on the loaded course, on servers with Baja75 results', 'MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
     'MENU \u203a Display: Map frame rate, settings backup / restore / reset, and every key listed',
     'New data fields: GAP TO BEST, TIME TO FINISH, G-FORCE \u00b7 Button 4 = Clean map, Button 5 = night map'];
   P.whatsNew = function () {
@@ -1673,6 +1681,7 @@
       case 'exportRace': if (!this.guard('share', function () { this.openSheet('menu'); })) break; if (sel) this.call('exportRacePath', selArgs + ', ' + luaNum(this.s.raceSpacing || 75)); break; // v3.11
       case 'importRace': this.call('importRace', luaStr(v)); break;
       case 'srvRaces': this.call('serverRaces', ''); break; // v3.12
+      case 'srvBoard': this.call('serverBoard', ''); break; // v3.13
       case 'srvRaceGet': this.call('serverRaceGet', luaStr(v)); break;
       case 'serverPack': if (!this.guard('share', function () { this.openSheet('menu'); })) break; if (sel) this.call('addToServerPack', selArgs); break;
       case 'delCourse': {
@@ -2776,6 +2785,25 @@
   };
 
   // MENU > Times: every timed run from race_log.txt (newest first), with its warnings
+  // v3.13: the server leaderboard of the course you have loaded (servers with the Baja75 results plugin v1.1)
+  P.boardHtml = function () {
+    if (ONYX) return '';
+    var b = this.board, body;
+    if (!b) body = '<div class="txl-note">On a BeamMP server with Baja75 results: each driver\u2019s best time on the loaded course.</div>';
+    else if (b.asking) body = '<div class="txl-empty">Asking the server\u2026</div>';
+    else if (b.why === 'mp') body = '<div class="txl-empty">Join a BeamMP server first.</div>';
+    else if (b.why === 'course') body = '<div class="txl-empty">Load a course first.</div>';
+    else if (b.why === 'noanswer') body = '<div class="txl-empty">No answer: this server doesn\u2019t keep Baja75 results (results plugin v1.1 or newer).</div>';
+    else if (b.none) body = '<div class="txl-empty"><b>' + esc(b.course || '') + '</b> isn\u2019t one of this server\u2019s courses.</div>';
+    else if (!arr(b.rows).length) body = '<div class="txl-empty">No finished runs on <b>' + esc(b.course || '') + '</b> yet. Be the first.</div>';
+    else body = '<div class="t2" style="margin:2px 0 6px">' + esc(b.course || '') + ' \u00b7 ' + esc(b.total || 0) + ' driver' + (b.total === 1 ? '' : 's') +
+      (b.me && b.me.rank ? ' \u00b7 you: <b>P' + esc(b.me.rank) + '</b> ' + esc(b.me.time || '') : '') + '</div>' +
+      arr(b.rows).map(function (r) {
+        return '<div class="txl-row"><div class="t1" style="width:34px">P' + esc(r.rank) + '</div><div class="grow"><div class="t1">' + esc(r.driver) + (r.number ? ' <span class="t2">#' + esc(String(r.number).replace(/^#/, '')) + '</span>' : '') + '</div><div class="t2">' + esc(r.vehicle || '') + '</div></div><div class="t1 mono">' + esc(r.time) + '</div></div>';
+      }).join('');
+    return '<div class="txl-sec"><h3>Server leaderboard</h3>' + body + '<div class="txl-btnrow">' + btn('srvBoard', b && b.rows ? 'Refresh' : 'Show leaderboard') + '</div></div>';
+  };
+
   P.timesHtml = function () {
     var log = this.runLog || {}, list = arr(log.entries), lg = this.login();
     var where = '<div class="txl-pathrow"><div class="grow"><div class="t2">Run log (a small text file, all maps)</div><div class="t1 mono path">' +
@@ -2786,7 +2814,7 @@
         (lg.via === 'beammp' ? '' : lg.on ? btn('loginOpen', 'Change') + btn('signOut', 'Sign out') : btn('loginOpen', 'Sign in', 'primary')) + '</div>' :
       '<div class="txl-row"><div class="grow"><div class="t1">Driver name</div><div class="t2">Saved with every run' + (this.s.driverName ? '' : ' (blank: BeamMP name)') + '</div></div><input class="txl-input" type="text" data-in="driverName" maxlength="40" placeholder="Driver" value="' + esc(this.s.driverName || '') + '">' + kbd('driverName') + '</div>') +
       '<div class="txl-row"><div class="grow"><div class="t1">Race number</div></div><input class="txl-input short" type="text" data-in="raceNumber" maxlength="8" placeholder="#" value="' + esc(this.s.raceNumber || '') + '">' + kbd('raceNumber') + '</div>' +
-      '<div class="txl-row"><div class="grow"><div class="t1">Export for scoring</div><div class="t2">A copy of your run log for the race organizer (exports folder)</div></div>' + btn('exportRunLog', 'Export', 'blue') + '</div></div>';
+      '<div class="txl-row"><div class="grow"><div class="t1">Export for scoring</div><div class="t2">A copy of your run log for the race organizer (exports folder)</div></div>' + btn('exportRunLog', 'Export', 'blue') + '</div></div>' + this.boardHtml();
     if (!list.length) {
       return where + '<div class="txl-empty">No timed runs yet. Load a course, then press <b>START</b> on the main screen: every finished run (and every ended one, as DNF) is listed here with its time, vehicle, warnings, resets and recoveries, and each off-course moment.</div>';
     }
@@ -4407,7 +4435,7 @@
 
   // ---------------------------------------------------------------- Angular glue
   var HOOKS = [EV + 'pass', EV + 'gallery', EV + 'unitSettings', EV + 'hud', EV + 'list', EV + 'course', EV + 'wpts', EV + 'trail', EV + 'rec',
-    EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login', EV + 'dashState', EV + 'serverRaces'];
+    EV + 'chaseTargets', EV + 'icons', EV + 'cmd', EV + 'toast', EV + 'basemap', EV + 'hello', EV + 'text', EV + 'courseInfo', EV + 'pacenoteInfo', EV + 'pacenotePreview', EV + 'runLog', EV + 'snapshot', EV + 'media', EV + 'clipboard', EV + 'videoServer', EV + 'tel', EV + 'musicArt', EV + 'videoHit', EV + 'locked', EV + 'notice', EV + 'login', EV + 'dashState', EV + 'serverRaces', EV + 'serverBoard'];
   TreadXLApp.HOOKS = HOOKS;
 
   if (window.angular && angular.module) {
