@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.14'
+local VERSION = '3.15'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -66,6 +66,7 @@ local PNK = {                 -- pacenote / warning settings
   MIN_LEAD = 30,              -- m: never later than this
   ICON = 'Tread_XL_icon_pacenote.svg',
   EDITION = 'onyx',           -- 'full' | 'chase' | 'rally' | 'track' | 'common' | 'free' | 'onyx': which build this zip is (dev/package.py sets it)
+  CREATOR = false,            -- the Creator Edition (the full unit for content creators): dev/package.py sets it
   -- the Onyx Edition (road and overland exploration): the symbols it marks (no race symbols)
   ONYX_KINDS = { hazard = true, danger = true, medic = true, note = true, turn = true },
   -- the Chase Edition's only symbols: pits, start / finish, VCPs, speed zone start / end (no pacenotes, hazards, notes)
@@ -329,6 +330,7 @@ local function startupSoundPath()
     local p = SOUNDS .. '/startup.' .. ext
     if fileExists(p) then return p end
   end
+  if PNK.CREATOR and fileExists('/ui/modules/apps/Baja75-GPS/sounds/creator_startup.ogg') then return '/ui/modules/apps/Baja75-GPS/sounds/creator_startup.ogg' end
   return DEFAULT_STARTUP
 end
 
@@ -955,10 +957,46 @@ function Snap.heightmapTile()
   return { image = img, x = px, y = py + size, w = size, h = size, height = true }
 end
 
--- terrain image tiles: x = west edge, y = north edge, w/h in metres (level info minimap, else the TerrainBlock's map
--- image, else the terrain heightmap unless noHeight)
+-- v3.15 (owner): the map's background is the level's terrain base texture, t_terrain_base_b.png (anywhere in the level
+-- folder: a modded map's own), placed over the TerrainBlock like the heightmap. Johnson Valley without the file: the
+-- copy that ships with the unit.
+Snap.JV_BASE = '/ui/modules/apps/Baja75-GPS/maps/johnson_valley_terrain_base_b.jpg'
+M._snap = Snap -- (tests)
+function Snap.baseTile()
+  if not FS then return nil end
+  local img
+  pcall(function()
+    local files = FS:findFiles('/levels/' .. levelKey() .. '/', 't_terrain_base_b.png', -1, true, false)
+    if type(files) == 'table' and #files > 0 then
+      local list = {}
+      for _, f in ipairs(files) do list[#list + 1] = tostring(f) end
+      table.sort(list)
+      img = list[1]
+    end
+  end)
+  if not img and levelKey():lower() == 'johnson_valley' and fileExists(Snap.JV_BASE) then img = Snap.JV_BASE end
+  if not img then return nil end
+  local h = Snap.heightmapTile() -- the same place on the ground as the heightmap (the TerrainBlock)
+  if h then return { image = img, x = h.x, y = h.y, w = h.w, h = h.h, base = true } end
+  local size, px, py
+  pcall(function()
+    local t = getObjectByClass and getObjectByClass('TerrainBlock')
+    if not t then
+      local names = scenetree.findClassObjects('TerrainBlock')
+      if names and #names > 0 then t = scenetree.findObject(names[1]) end
+    end
+    if t then size = tonumber(t:getWorldBlockSize()); local pos = t:getPosition(); px, py = tonumber(pos.x), tonumber(pos.y) end
+  end)
+  if not (size and size > 0 and px and py) then return nil end
+  return { image = img, x = px, y = py + size, w = size, h = size, base = true }
+end
+
+-- terrain image tiles: x = west edge, y = north edge, w/h in metres (v3.15: the terrain base texture first, then the
+-- level info minimap, else the TerrainBlock's map image, else the terrain heightmap unless noHeight)
 local function terrainTiles(noHeight)
   local tiles = {}
+  local base = Snap.baseTile()
+  if base then return { base } end
   local ok, info = pcall(function() return core_levels.getLevelByName(levelKey()) end)
   if ok and type(info) == 'table' and type(info.minimap) == 'table' then
     local list = info.minimap
@@ -2811,7 +2849,7 @@ function Snap.make(name, c, dir)
   trigger('snapshot', {
     id = id, name = name, title = (name:gsub('_', ' ')), info = lines, level = levelId(), mapName = Snap.mapName(),
     length = r2(c.length or 0), elev = e and { lo = r2(e.lo), hi = r2(e.hi), up = r2(e.up), down = r2(e.down) } or nil,
-    flat = flatPts(c.pts), wpts = wptsForUi(c.sorted), mapTiles = terrainTiles(true), satTile = Snap.heightmapTile(),
+    flat = flatPts(c.pts), wpts = wptsForUi(c.sorted), mapTiles = terrainTiles(true), satTile = Snap.baseTile() or Snap.heightmapTile(),
   })
 end
 

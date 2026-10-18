@@ -20,22 +20,23 @@ Road and overland exploration in metallic black.
 
 
 <!-- builds:start -->
-## Builds (v3.13)
+## Builds (v3.15)
 
 Download the latest zip of each variant (also in the [builds](builds/) folder).
 
 | Download | What it is | Where it goes | Size |
 |---|---|---|---|
-| [**Baja75 Navigation Unit (full)**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-v3.13.zip) | All four modes; made for the Baja75 servers | Server: Resources/Client · Player: mods/ | 1,324 KB |
-| [**Adventure Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-AdventureEdition-v3.13.zip) | The full unit under the Adventure Edition name | mods/ | 703 KB |
-| [**Chase Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-ChaseEdition-v3.13.zip) | Chase mode only | mods/ | 801 KB |
-| [**Rally Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-RallyEdition-v3.13.zip) | Rally mode only | mods/ | 719 KB |
-| [**Track Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-TrackEdition-v3.13.zip) | Track mode only | mods/ | 843 KB |
-| [**Common Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-CommonEdition-v3.13.zip) | The free unit, all four modes with limits | mods/ | 587 KB |
-| [**Free Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-FreeEdition-v3.13.zip) | Free: Adventure mode, 1 course of your own | mods/ | 568 KB |
-| [**Onyx Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-OnyxEdition-v3.13.zip) | Road and overland exploring, no racing | mods/ | 412 KB |
-| [**Server: results + leaderboard**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-ServerResults-v3.13.zip) | BeamMP server plugin: collects runs, server leaderboard | Server folder (next to ServerConfig.toml) | 8 KB |
-| [**Server: race alerts**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-ServerRaceAlerts-v3.13.zip) | BeamMP server plugin: pass requests, server races | Server folder (next to ServerConfig.toml) | 14 KB |
+| [**Baja75 Navigation Unit (full)**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-v3.15.zip) | All four modes; made for the Baja75 servers | Server: Resources/Client · Player: mods/ | 1,957 KB |
+| [**Adventure Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-AdventureEdition-v3.15.zip) | The full unit under the Adventure Edition name | mods/ | 1,336 KB |
+| [**Chase Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-ChaseEdition-v3.15.zip) | Chase mode only | mods/ | 1,435 KB |
+| [**Rally Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-RallyEdition-v3.15.zip) | Rally mode only | mods/ | 1,353 KB |
+| [**Track Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-TrackEdition-v3.15.zip) | Track mode only | mods/ | 1,477 KB |
+| [**Common Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-CommonEdition-v3.15.zip) | The free unit, all four modes with limits | mods/ | 1,221 KB |
+| [**Free Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-FreeEdition-v3.15.zip) | Free: Adventure mode, 1 course of your own | mods/ | 1,201 KB |
+| [**Onyx Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-OnyxEdition-v3.15.zip) | Road and overland exploring, no racing | mods/ | 1,045 KB |
+| [**Creator Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-CreatorEdition-v3.15.zip) | The full unit for content creators, with the USMC theme | mods/ | 2,111 KB |
+| [**Server: results + leaderboard**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-ServerResults-v3.15.zip) | BeamMP server plugin: collects runs, server leaderboard | Server folder (next to ServerConfig.toml) | 8 KB |
+| [**Server: race alerts**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-ServerRaceAlerts-v3.15.zip) | BeamMP server plugin: pass requests, server races | Server folder (next to ServerConfig.toml) | 14 KB |
 
 Install **one** unit zip: they replace each other. The two server plugins go on the BeamMP server only.
 <!-- builds:end -->

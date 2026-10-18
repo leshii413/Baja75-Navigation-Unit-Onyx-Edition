@@ -17,10 +17,12 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.14';
+  var VERSION = '3.15';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
+  var CREATOR = false; // the Creator Edition (the full unit for content creators, with the USMC theme): dev/package.py sets it
   var EDITION_NAME = { full: '', chase: 'Chase Edition', rally: 'Rally Edition', track: 'Track Edition', common: 'Common Edition', free: 'Free Edition', onyx: 'Onyx Edition' }[EDITION] || '';
+  if (CREATOR) EDITION_NAME = 'Creator Edition';
   // the package letter by the version on the case: C Chase, R Rally, T Track, P Public (Common); the full unit shows the version only
   var EDITION_TAG = { chase: 'C', rally: 'R', track: 'T', common: 'P', free: 'F', onyx: 'O' }[EDITION] || '';
   // v3.1.9: themes (case, colours, home screen). Each zip has its own: dev/package.py rewrites THEMES_ON
@@ -34,7 +36,8 @@
     { id: 'jdm', name: 'JDM', accent: '#e3262b', logo: 1 },
     { id: 'drift', name: 'Drift', accent: '#ff2fa8', logo: 1 },
     { id: 'overland', name: 'Overland', accent: '#c9a25a', logo: 1 },
-    { id: 'anime', name: 'Anime', accent: '#c89cf0', logo: 1 }
+    { id: 'anime', name: 'Anime', accent: '#c89cf0', logo: 1 },
+    { id: 'usmc', name: 'USMC', accent: '#d4a634', logo: 1 } // the Creator Edition only
   ].filter(function (t) { return t.id === 'baja75' || THEMES_ON.indexOf(t.id) >= 0; });
   function themeOf(id) { for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return THEMES[i]; return THEMES[0]; }
   // the Onyx Edition: road and overland exploration in a metallic black unit; no races, Chase Map or unlocking
@@ -1423,7 +1426,7 @@
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
   // v3.9: after an update, once: what's new (not on the very first start, not over the sign-in or another sheet)
-  var WHATS_NEW = ['BeamStateRp is now an approved server: every edition has full access there', 'MENU \u203a Times \u203a Server leaderboard: every driver\u2019s best time on the loaded course, on servers with Baja75 results', 'MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
+  var WHATS_NEW = ['The map background is now the loaded map\u2019s own terrain texture (Johnson Valley built in)', 'BeamStateRp is now an approved server: every edition has full access there', 'MENU \u203a Times \u203a Server leaderboard: every driver\u2019s best time on the loaded course, on servers with Baja75 results', 'MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
     'MENU \u203a Display: Map frame rate, settings backup / restore / reset, and every key listed',
     'New data fields: GAP TO BEST, TIME TO FINISH, G-FORCE \u00b7 Button 4 = Clean map, Button 5 = night map'];
   P.whatsNew = function () {

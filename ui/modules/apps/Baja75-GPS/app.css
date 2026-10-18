@@ -1456,3 +1456,27 @@
 .txl-new { margin: 0.2em 0 0.8em; padding-left: 1.3em; text-align: left; line-height: 1.45; font-size: 1.05em; font-weight: 600; }
 .txl-new li { margin: 0.25em 0; }
 .txl-new li::marker { color: var(--txl-accent); }
+
+/* ---------------------------------------------------------------- USMC (Creator Edition): Dress Blues case (midnight blue, scarlet piping,
+   white trim, gold hardware) over a modern digital camo home screen */
+.txl[data-theme="usmc"][data-home="1"] .txl-home { background-image: url("/ui/modules/apps/Baja75-GPS/themes/usmc/home.jpg"); }
+.txl[data-theme="usmc"] { --txl-card: #151c30; --txl-card-hi: #1e2740; }
+.txl[data-theme="usmc"] .txl-device {
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.07) 38%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.35) 100%),
+    url("/ui/modules/apps/Baja75-GPS/themes/usmc/camo.png");
+  background-size: auto, auto, 7em 7em;
+  image-rendering: pixelated;
+  box-shadow: inset 0 0 0 0.12em #d4a634, inset 0 0 0 0.24em #111829, inset 0 0 0 0.3em #a6192e,
+    inset 0 0.2em 0.25em rgba(255, 255, 255, 0.14), inset 0 -0.35em 0.6em rgba(0, 0, 0, 0.6), 0 0.6em 1.6em rgba(0, 0, 0, 0.75); }
+.txl[data-theme="usmc"] .txl-screen { box-shadow: 0 0 0 0.16em #ecece8, 0 0 0 0.3em #a6192e, 0 0 0 0.36em #111829, 0 0 0.7em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="usmc"] .txl-case .g { border-color: #d4a634; filter: drop-shadow(0 0.06em 0.08em rgba(0, 0, 0, 0.7)); }
+.txl[data-theme="usmc"] .txl-case .sc { background: radial-gradient(circle at 38% 32%, #fff1bf 0%, #e0b448 35%, #9c7418 70%, #4d3908 100%); box-shadow: 0 0 0 0.05em rgba(0, 0, 0, 0.5); }
+.txl[data-theme="usmc"] .txl-case .b75 { color: #d4a634; }
+.txl[data-theme="usmc"] .txl-hwb { background: linear-gradient(180deg, #1d2742 0%, #0e1424 100%); color: #ecece8; letter-spacing: 0.12em; box-shadow: inset 0 0 0 0.06em rgba(212, 166, 52, 0.75), inset 0 -0.14em 0 #a6192e, 0 0.15em 0.35em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="usmc"] .txl-hwb:not(.off) span { border-bottom-color: #d4a634; }
+.txl[data-theme="usmc"] .txl-mtag { color: #ecece8; background: #111829; box-shadow: inset 0 0 0 0.1em #a6192e; }
+.txl[data-theme="usmc"] .txl-home .h-date { color: #ecece8; letter-spacing: 0.3em; }
+.txl[data-theme="usmc"] .txl-home .h-tile { background: linear-gradient(170deg, rgba(29, 39, 66, 0.92), rgba(12, 17, 31, 0.94)); box-shadow: inset 0 0 0 0.07em rgba(212, 166, 52, 0.9), inset 0 -0.2em 0 #a6192e, 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
+.txl[data-theme="usmc"] .txl-home .h-tile span { color: #ecece8; }
+.txl[data-theme="usmc"] .txl-home .h-top::after { content: ""; display: block; width: 5em; height: 0.14em; margin: 0.35em auto 0; background: #a6192e; box-shadow: 0 0.14em 0 #ecece8, 0 0.28em 0 #d4a634; }
