@@ -33,7 +33,7 @@ local TAG = 'TreadXLGPS'
 local EV = 'TreadXLGPS.'
 local ICON_BASE = '/ui/modules/apps/Baja75-GPS/Baja75-GPSicons/'
 
-local VERSION = '3.16'
+local VERSION = '3.17'
 
 -- where courses live (game virtual paths in the user folder, %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\).
 -- Everything stays under settings/ - the folder BeamNG lets mods write to.
@@ -4276,8 +4276,8 @@ end)() end
 -- The Common Edition has no locks, and no recording, marking, Chase Map, sharing out or video at all (COMMON_OFF). (Inside a function called once: the main chunk is at Lua's 200-local limit.)
 do (function()
 local LOCK = {
-  SERVERS = { '199.127.61.187:30984', '199.127.61.187:30997', '162.220.15.150:27035', 'node-de5.connecthosting.net:30864' }, -- (a host name is also matched by its address)
-  NAMES = { { 9, '72c9a7e8495595e1' }, { 6, '48b5d05afa1666ed' }, { 11, '2365a3d472b11426' } }, -- v3.14: lower case, letters and digits only -- { length, digest }: the server-name words
+  SERVERS = { '199.127.61.187:30984', '199.127.61.187:30997', '162.220.15.150:27035', 'node-de5.connecthosting.net:30864', 'us-mi34b.rackgeni.us:26114' }, -- (a host name is also matched by its address)
+  NAMES = { { 9, '72c9a7e8495595e1' }, { 6, '48b5d05afa1666ed' }, { 11, '2365a3d472b11426' }, { 14, 'bb0f4905bfd6a171' } }, -- v3.14 (v3.17: + ZeroOne designs): lower case, letters and digits only -- { length, digest }: the server-name words
   nameSeen = {},
   DIGEST = '61b5de1f53e2165c',
   EVERY = 1, t = -1e9, server = nil, at = nil, password = false, dns = {}, allowed = {},

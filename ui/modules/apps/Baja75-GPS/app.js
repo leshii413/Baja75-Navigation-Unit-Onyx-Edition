@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.16';
+  var VERSION = '3.17';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var CREATOR = false; // the Creator Edition (the full unit for content creators, with the USMC theme): dev/package.py sets it
@@ -1456,7 +1456,7 @@
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
   // v3.9: after an update, once: what's new (not on the very first start, not over the sign-in or another sheet)
-  var WHATS_NEW = ['MENU \u203a Display \u203a Language: the screen in Espa\u00f1ol (MXN), Deutsch, Filipino (Bisaya), \u0420\u0443\u0441\u0441\u043a\u0438\u0439, \u65e5\u672c\u8a9e or \ud55c\uad6d\uc5b4', 'The map background is now the loaded map\u2019s own terrain texture (Johnson Valley built in)', 'BeamStateRp is now an approved server: every edition has full access there', 'MENU \u203a Times \u203a Server leaderboard: every driver\u2019s best time on the loaded course, on servers with Baja75 results', 'MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
+  var WHATS_NEW = ['ZeroOne designs is now an approved server: every edition has full access there', 'MENU \u203a Display \u203a Language: the screen in Espa\u00f1ol (MXN), Deutsch, Filipino (Bisaya), \u0420\u0443\u0441\u0441\u043a\u0438\u0439, \u65e5\u672c\u8a9e or \ud55c\uad6d\uc5b4', 'The map background is now the loaded map\u2019s own terrain texture (Johnson Valley built in)', 'BeamStateRp is now an approved server: every edition has full access there', 'MENU \u203a Times \u203a Server leaderboard: every driver\u2019s best time on the loaded course, on servers with Baja75 results', 'MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
     'MENU \u203a Display: Map frame rate, settings backup / restore / reset, and every key listed',
     'New data fields: GAP TO BEST, TIME TO FINISH, G-FORCE \u00b7 Button 4 = Clean map, Button 5 = night map'];
   P.whatsNew = function () {
@@ -3842,7 +3842,7 @@
       (a.password ? btn('relock', 'LOCK') : '') + btn('keyOpen', 'ENTER KEY', 'blue') + '</div>' +
       '<div class="txl-note">When your key runs out, contact <b>Baja75 on Patreon</b> for another key, with your proof of purchase, your trial access, or where you found the mod.</div>' +
       '<div class="txl-note">Play an hour on a <b>Baja75 server</b> to earn an extra day (once a day).</div>' +
-      '<div class="txl-sec"><h3>Approved servers with online access</h3><div class="txl-note"><b>Baja75 Series</b><br><b>Beam Desert Crew</b><br><b>BeamStateRp</b></div></div></div>';
+      '<div class="txl-sec"><h3>Approved servers with online access</h3><div class="txl-note"><b>Baja75 Series</b><br><b>Beam Desert Crew</b><br><b>BeamStateRp</b><br><b>ZeroOne designs</b></div></div></div>';
   };
   // the Free Edition: a short pop-up that other features need the product key
   P.nudge = function () {
