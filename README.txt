@@ -20,6 +20,10 @@ Video plays big with the map small in a corner (Display: corner, music as a card
 
 Power button (far right of the bezel, by the green light): Restart System restarts the GPS screen.
 
+Languages (v3.16): MENU > Display > Language - English (USA), Espanol (MXN), Deutsch (GER), Filipino (Bisaya/Cebuano),
+Russkiy (RU), Japanese (JP) or Korean (SK). The screen, the Alerts and the Pacenotes pop-ups change straight away; names,
+courses and files stay as they are, and the co-driver keeps BeamNG's English voice.
+
 As the Baja75 owner, I wanted a method for racers to complete a race on and offline. This is my first attempt at doing so.
 
 Baja chase navigator look: rolling waypoint list, tappable data fields, race miles, VCP cleared/missed,

@@ -26,7 +26,7 @@ Download the latest zip of each variant (also in the [builds](builds/) folder).
 
 | Download | What it is | Where it goes | Size |
 |---|---|---|---|
-| [**Baja75 Navigation Unit (full)**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-v3.15.zip) | All four modes; made for the Baja75 servers | Server: Resources/Client · Player: mods/ | 1,957 KB |
+| [**Baja75 Navigation Unit (full)**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-v3.15.zip) | All four modes; made for the Baja75 servers | Server: Resources/Client · Player: mods/ | 1,958 KB |
 | [**Adventure Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-AdventureEdition-v3.15.zip) | The full unit under the Adventure Edition name | mods/ | 1,336 KB |
 | [**Chase Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-ChaseEdition-v3.15.zip) | Chase mode only | mods/ | 1,435 KB |
 | [**Rally Edition**](https://github.com/leshii413/baja75-gps/raw/tread-xl-baja-chase-redesign/builds/Baja75-NavigationUnit-RallyEdition-v3.15.zip) | Rally mode only | mods/ | 1,353 KB |
@@ -240,6 +240,16 @@ The round button at the far right of the bezel, next to the green light (hover: 
 | Common and Free Editions | Anime |
 
 Every edition also keeps the standard **Baja75** look. The Onyx Edition has its own metallic black design.
+
+## Screen languages (v3.16)
+
+MENU → Display → **Language** puts the unit's screen in **English (USA)**, **Español (MXN)** (Mexican Spanish), **Deutsch (GER)**, **Filipino (Bisaya/Cebuano)**, **Русский (RU)**, **日本語 (JP)** or **한국어 (SK)**. It changes straight away, no restart, and the Alerts and Pacenotes pop-ups follow it.
+
+- Menus, buttons, alerts, messages, pacenote tiles, data fields and help text are translated. German and Russian use a 24-hour clock, and the home screen's date is written the language's way.
+- Staying as they are: course, waypoint and driver names, file names and folders, the mode, edition and theme names (Chase, Adventure, Rally, Track…), VCP / RM / REC, and the three buttons printed on the case (HOME, MODE, DISPLAY).
+- The co-driver keeps BeamNG's own English voice; text BeamNG draws itself (its own pacenote display) is the game's.
+- Japanese and Korean use Windows' own fonts (Yu Gothic / Meiryo, Malgun Gothic); the accents and Cyrillic come with the unit's font.
+- Labels wrap onto a second line instead of being cut off, and the Theme choices sit in two rows.
 
 ## Race paths for missions and BeamJoy (v3.11)
 

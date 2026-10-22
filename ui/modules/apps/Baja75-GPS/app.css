@@ -8,6 +8,14 @@
   font-weight: 100 900;
   font-style: normal;
 }
+/* v3.16: accented Latin (Spanish, German, Bisaya) and Cyrillic (Russian) from the same Roboto Condensed (OFL) */
+@font-face {
+  font-family: "TXL Condensed";
+  src: url("/ui/modules/apps/Baja75-GPS/fonts/RobotoCondensed-TXL-ext.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  unicode-range: U+00A0-017F, U+0400-045F, U+0490-0491, U+2116;
+}
 
 .txl {
   --txl-accent: #ff6a13;          /* Baja orange */
@@ -220,7 +228,7 @@
 .txl-card .badge.zone { background: #fff; color: #000; }
 .txl-card .badge.chasebadge { background: var(--txl-accent); color: #111; font-variant-numeric: tabular-nums; }
 .txl-card.empty { display: block; text-align: center; padding: 1.4em 0.8em; background: transparent; border: 0.12em dashed #33373d; }
-.txl-card.empty .lbl { font-size: 1.45em; color: var(--txl-text); }
+.txl-card.empty .lbl { font-size: 1.45em; color: var(--txl-text); white-space: normal; line-height: 1.15; }
 .txl-card.empty .sub { white-space: normal; margin-top: 0.4em; line-height: 1.3; }
 
 /* chase card */
@@ -456,8 +464,9 @@
 .txl-row.click { cursor: pointer; }
 .txl-row.click:hover { background: rgba(255, 255, 255, 0.04); }
 .txl-row .grow { flex: 1; min-width: 0; }
-.txl-row .t1 { font-size: 1.35em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.txl-row .t2 { font-size: 1.05em; font-weight: 600; color: var(--txl-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.1em; }
+/* v3.16: labels wrap onto more lines instead of being cut off (longer in other languages) */
+.txl-row .t1 { font-size: 1.35em; font-weight: 700; line-height: 1.2; overflow-wrap: break-word; }
+.txl-row .t2 { font-size: 1.05em; font-weight: 600; color: var(--txl-dim); line-height: 1.25; overflow-wrap: break-word; margin-top: 0.1em; }
 .txl-row .num { font-size: 1.3em; font-weight: 800; color: var(--txl-dim); font-variant-numeric: tabular-nums; }
 .txl-row img.ri { width: 2.6em; height: 2.6em; }
 .txl-empty { padding: 1.2em 0.4em; font-size: 1.2em; color: var(--txl-dim); line-height: 1.35; }
@@ -493,6 +502,10 @@
 .txl-kbd svg { width: 1.7em; height: 1.2em; display: block; }
 
 .txl-seg { display: inline-flex; border-radius: 0.45em; overflow: hidden; background: #23262b; }
+/* v3.16: many choices (Theme) in two rows, so the row's label keeps its room; a choice's words wrap if they must */
+.txl-seg.two { display: inline-grid; flex-shrink: 1; min-width: 0; }
+.txl-seg.two button { height: auto; min-height: 2.6em; padding: 0.3em 0.9em; white-space: normal; line-height: 1.1; }
+.txl-row.txl-rowtheme .grow { min-width: 5em; }
 .txl-seg button { height: 2.6em; padding: 0 0.9em; background: transparent; font-size: 1.1em; font-weight: 800; color: var(--txl-dim); }
 .txl-seg button.on { background: var(--txl-blue); color: #fff; }
 .txl-swatches { display: flex; gap: 0.45em; }
@@ -1480,3 +1493,14 @@
 .txl[data-theme="usmc"] .txl-home .h-tile { background: linear-gradient(170deg, rgba(29, 39, 66, 0.92), rgba(12, 17, 31, 0.94)); box-shadow: inset 0 0 0 0.07em rgba(212, 166, 52, 0.9), inset 0 -0.2em 0 #a6192e, 0 0.5em 1.2em rgba(0, 0, 0, 0.6); }
 .txl[data-theme="usmc"] .txl-home .h-tile span { color: #ecece8; }
 .txl[data-theme="usmc"] .txl-home .h-top::after { content: ""; display: block; width: 5em; height: 0.14em; margin: 0.35em auto 0; background: #a6192e; box-shadow: 0 0.14em 0 #ecece8, 0 0.28em 0 #d4a634; }
+
+/* v3.16: Japanese and Korean use the computer's own fonts (Windows: Yu Gothic / Meiryo, Malgun Gothic) */
+.txl[data-lang="ja"] { font-family: "TXL Condensed", "Yu Gothic UI", "Meiryo UI", "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", sans-serif; }
+.txl[data-lang="ko"] { font-family: "TXL Condensed", "Malgun Gothic", "Noto Sans CJK KR", "Noto Sans KR", sans-serif; }
+.txl[data-lang="ja"] [data-tr], .txl[data-lang="ko"] [data-tr] { letter-spacing: normal; } /* translated text only: names and the bezel keep theirs */
+/* v3.16: MENU > Display > Language: each language in its own words, two columns */
+.txl-langs { display: grid; grid-template-columns: repeat(auto-fill, minmax(13.5em, 1fr)); gap: 0.4em; padding: 0.35em 0.9em 0.6em; }
+.txl-lang { height: 2.6em; padding: 0 0.8em; border-radius: 0.45em; background: rgba(255, 255, 255, 0.07); color: var(--txl-text); font-size: 1.12em; font-weight: 700; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.txl-lang.on { background: var(--txl-accent); color: #111; }
+.txl-lang[lang="ja"] { font-family: "TXL Condensed", "Yu Gothic UI", "Meiryo UI", "Meiryo", "Noto Sans CJK JP", sans-serif; }
+.txl-lang[lang="ko"] { font-family: "TXL Condensed", "Malgun Gothic", "Noto Sans CJK KR", sans-serif; }

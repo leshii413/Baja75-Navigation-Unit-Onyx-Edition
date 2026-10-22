@@ -17,7 +17,7 @@
   var APP_DIR = '/ui/modules/apps/Baja75-GPS/';
   var ICON_DIR = APP_DIR + 'Baja75-GPSicons/';
   var EV = 'TreadXLGPS.';
-  var VERSION = '3.15';
+  var VERSION = '3.16';
   // which build this is: 'full' (all four modes), 'chase', 'rally', 'track' (single-mode editions), 'common' or 'free'; dev/package.py sets it
   var EDITION = 'onyx';
   var CREATOR = false; // the Creator Edition (the full unit for content creators, with the USMC theme): dev/package.py sets it
@@ -91,7 +91,23 @@
   // courses that can't be changed here: a server's, and the Rally Courses made from the map's own missions
   function readOnlySrc(src) { return src === 'server' || src === 'rally'; }
 
+  // v3.16: the screen's language (lang/i18n.js translates what the unit draws; English is the code's own text)
+  var LANGS = [['en', 'English (USA)'], ['es-MX', 'Espa\u00f1ol (MXN)'], ['de', 'Deutsch (GER)'], ['ceb', 'Filipino (Bisaya/Cebuano)'],
+    ['ru', '\u0420\u0443\u0441\u0441\u043a\u0438\u0439 (RU)'], ['ja', '\u65e5\u672c\u8a9e (JP)'], ['ko', '\ud55c\uad6d\uc5b4 (SK)']];
+  function langOf(id) { for (var i = 0; i < LANGS.length; i++) if (LANGS[i][0] === id) return LANGS[i][0]; return 'en'; }
+  var I18N_SRC = '/ui/modules/apps/Baja75-GPS/lang/i18n.js';
+  function loadI18n(cb) {
+    if (window.TXLi18n) { cb(); return; }
+    var w = loadI18n.wait || (loadI18n.wait = []);
+    w.push(cb);
+    if (w.length > 1) return;
+    var sc = document.createElement('script');
+    sc.src = I18N_SRC;
+    sc.onload = sc.onerror = function () { var l = loadI18n.wait; loadI18n.wait = null; if (window.TXLi18n) for (var i = 0; i < l.length; i++) l[i](); };
+    (document.head || document.documentElement).appendChild(sc);
+  }
   var DEFAULTS = {
+    lang: 'en',
     units: 'imperial', northUp: false, bezel: true, deck: true, fields: ['raceMile', 'toNext', 'toFinish'],
     freeFields: ['heading', 'elevation', 'trip'],
     courseColor: '#e8178a', sharpTurns: true, autoZoom: true, zoom: 0.8, showOthers: true, othersNames: true,
@@ -121,6 +137,8 @@
   var BOOT_RESTART_LOAD = 4000, BOOT_RESTART_READ = 2500, RESTART_DARK = 900; // the power button (Restart System)
 
   // ---------------------------------------------------------------- small helpers
+  // a tooltip set from code: written only when its English changes (the screen language translates it once)
+  function setTip(el, t) { if (el && el.__tip !== t) { el.__tip = t; el.title = t; } }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -215,10 +233,14 @@
     var d = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
     return d[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
   }
+  // v3.16: the screen language's clock and date (German and Russian read a 24-hour clock)
+  var LANG_CLOCK24 = false, LANG_LOCALE;
+  var LOCALES = { 'es-MX': ['es-MX', 'es'], de: ['de-DE', 'de'], ceb: ['ceb-PH', 'en-PH'], ru: ['ru-RU', 'ru'], ja: ['ja-JP', 'ja'], ko: ['ko-KR', 'ko'] };
   function clockText(tod) {
     var h, m;
     if (typeof tod === 'number' && isFinite(tod)) { h = Math.floor(tod / 3600) % 24; m = Math.floor(tod / 60) % 60; }
     else { var d = new Date(); h = d.getHours(); m = d.getMinutes(); }
+    if (LANG_CLOCK24) return h + ':' + (m < 10 ? '0' : '') + m;
     return ((h % 12) || 12) + ':' + (m < 10 ? '0' : '') + m + ' ' + (h < 12 ? 'AM' : 'PM');
   }
   // race time: 1:23.4 or 1:02:03.4
@@ -430,6 +452,7 @@
     this.host = host;
     this.layer = document.createElement('div');
     this.layer.className = 'txl-world';
+    this.layer.setAttribute('data-noi18n', '1'); // v3.16: names on the map stay as they are (not translated)
     host.appendChild(this.layer);
     this.svg = svgEl('svg', { class: 'txl-worldsvg' });
     this.layer.appendChild(this.svg);
@@ -787,7 +810,7 @@
       '  <div class="txl-sheet" data-sheet="unlock"></div>',
       '  <div class="txl-sheet" data-sheet="notice"></div>',
       '  <div class="txl-sheet" data-sheet="login"></div>',
-      ('  <div class="txl-home"><div class="h-top"><div class="h-clock"></div><div class="h-date"></div></div><div class="h-tiles">' +
+      ('  <div class="txl-home"><div class="h-top"><div class="h-clock"></div><div class="h-date" data-noi18n="1"></div></div><div class="h-tiles">' +
         [['music', 'Music', G.hMusic], ['video', 'Video', G.hVideo], ['maps', 'Maps', G.hMaps], ['settings', 'Settings', G.hSettings], ['gallery', 'Gallery', G.hGallery]].map(function (t) {
           return '<button class="h-tile" data-act="homeGo" data-v="' + t[0] + '"><i>' + t[2] + '</i><span>' + t[1] + '</span></button>';
         }).join('') + '</div>' + (ONYX ? '<img class="h-gem" src="' + APP_DIR + 'onyx/gem.svg" alt="">' : '') + '</div>'),
@@ -801,11 +824,11 @@
       '  <div class="txl-off"></div>',
       '  <div class="txl-glare"></div>',
       ' </div>',
-      ' <div class="txl-case"><i class="g tl"></i><i class="g tr"></i><i class="g bl"></i><i class="g br"></i><i class="sc l1"></i><i class="sc l2"></i><i class="sc r1"></i><i class="sc r2"></i><span class="b75">B75<small>v' + VERSION + (EDITION_TAG ? ' - ' + EDITION_TAG : '') + '</small></span></div>',
-      ' <div class="txl-brand"><img class="txl-logo" src="' + APP_DIR + (ONYX ? 'onyx/logo.svg' : 'logo.png') + '" alt="' + (ONYX ? 'Onyx Edition' : 'Baja75 Navigation Unit') + '"><b></b></div>',
+      ' <div class="txl-case" data-noi18n="1"><i class="g tl"></i><i class="g tr"></i><i class="g bl"></i><i class="g br"></i><i class="sc l1"></i><i class="sc l2"></i><i class="sc r1"></i><i class="sc r2"></i><span class="b75">B75<small>v' + VERSION + (EDITION_TAG ? ' - ' + EDITION_TAG : '') + '</small></span></div>',
+      ' <div class="txl-brand" data-noi18n="1"><img class="txl-logo" src="' + APP_DIR + (ONYX ? 'onyx/logo.svg' : 'logo.png') + '" alt="' + (ONYX ? 'Onyx Edition' : 'Baja75 Navigation Unit') + '"><b></b></div>',
       ' <div class="txl-hw">' + [1, 2, 3, 4, 5].map(function (n) {
         return '<button class="txl-hwb' + (n > 2 ? ' off' : '') + '" data-act="hw" data-v="' + n + '" title="' + (n === 2 ? 'Display: map / video / music (/ gauges in Track)' : n > 2 ? 'Button ' + n + ' (not used yet)' : '') + '">' +
-          '<span>' + (n === 2 ? 'DISPLAY' : '') + '</span></button>';
+          '<span data-noi18n="1">' + (n === 2 ? 'DISPLAY' : '') + '</span></button>';
       }).join('') + '</div>',
       ' <button class="txl-pwr" data-act="power" data-tip="Restart System" aria-label="Restart System">' + G.pwr + '</button>',
       ' <div class="txl-led"></div>',
@@ -1384,6 +1407,13 @@
       if (f.then) f.then.call(this);
     } else if (this.sheet === 'menu') this.renderSheet();
   };
+  // v3.16: the screen language (MENU > Display, and on the Display tab's lock screen: it is never locked)
+  P.langHtml = function () {
+    var cur = langOf(this.s.lang);
+    return '<div class="txl-sec"><h3>Language</h3><div class="txl-langs" data-noi18n="1">' + LANGS.map(function (l) {
+      return '<button class="txl-lang' + (cur === l[0] ? ' on' : '') + '" lang="' + l[0] + '" data-act="set" data-k="lang" data-v="' + l[0] + '">' + l[1] + '</button>';
+    }).join('') + '</div><div class="txl-note">The words on the screen. The co-driver keeps BeamNG\u2019s English voice; names, courses and files stay as they are.</div></div>';
+  };
   P.unlockHtml = function () {
     var f = this.unlockFor || {};
     var key = COMMON ? 'license key' : 'password or license key';
@@ -1393,7 +1423,7 @@
       '<div class="txl-row ul-row"><input class="txl-input" type="password" data-in="unlockPw" data-enter="unlockGo" maxlength="40" placeholder="' + (COMMON ? 'License key' : 'Password or license key') + '" autocomplete="off" value="">' +
       kbd('unlockPw') + btn('unlockGo', 'UNLOCK', 'primary') + '</div>' +
       '<div class="txl-note">A personal-use unlocking license for your own BeamNG can be bought from <b>Baja75 on Patreon</b>. Or join a Baja75 server: everything is open there.</div>' +
-      '</div></div>';
+      '</div>' + (f.what === 'display' ? this.langHtml() : '') + '</div>';
   };
   // v3.1.7: sign in (the full unit / Adventure, Chase, Rally and Track Editions): a username on every recording and run.
   // No password: it is only a name. On a BeamMP server with a real BeamMP name (not a Guest) the game script signs in by
@@ -1426,7 +1456,7 @@
   };
   // a message from the game script (a key that isn't needed here, keys on another server, ...)
   // v3.9: after an update, once: what's new (not on the very first start, not over the sign-in or another sheet)
-  var WHATS_NEW = ['The map background is now the loaded map\u2019s own terrain texture (Johnson Valley built in)', 'BeamStateRp is now an approved server: every edition has full access there', 'MENU \u203a Times \u203a Server leaderboard: every driver\u2019s best time on the loaded course, on servers with Baja75 results', 'MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
+  var WHATS_NEW = ['MENU \u203a Display \u203a Language: the screen in Espa\u00f1ol (MXN), Deutsch, Filipino (Bisaya), \u0420\u0443\u0441\u0441\u043a\u0438\u0439, \u65e5\u672c\u8a9e or \ud55c\uad6d\uc5b4', 'The map background is now the loaded map\u2019s own terrain texture (Johnson Valley built in)', 'BeamStateRp is now an approved server: every edition has full access there', 'MENU \u203a Times \u203a Server leaderboard: every driver\u2019s best time on the loaded course, on servers with Baja75 results', 'MENU \u203a Share \u203a Import race path \u203a Show server races: import the BeamJoy races of the server you\u2019re on', 'Your pacenotes now go into the exported race.json \u00b7 Recover to last road counts as a recovery, not a reset', 'Courses \u203a Export race path: a BeamNG race.json for missions and a BeamJoy race; MENU \u203a Share \u203a Import race path brings them back', 'On a BeamMP server, a notice when the server\u2019s copy and a copy in your mods/repo folder are both loaded (and how to fix it)', '3D map view (tap the compass), turn guidance and a live gap to your best run',
     'MENU \u203a Display: Map frame rate, settings backup / restore / reset, and every key listed',
     'New data fields: GAP TO BEST, TIME TO FINISH, G-FORCE \u00b7 Button 4 = Clean map, Button 5 = night map'];
   P.whatsNew = function () {
@@ -1744,7 +1774,8 @@
       case 'recDiscard': this.call('stopRecording', 'true'); break;
       case 'set': {
         var k = el.getAttribute('data-k');
-        if (isFree() && k !== 'themeNext' && k !== 'dash' && k !== 'passBtn') { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume, the key box, the theme and the vehicle's screen can)
+        if (isFree() && k !== 'themeNext' && k !== 'dash' && k !== 'passBtn' && k !== 'lang') { this.nudge(); break; } // the Free Edition: settings can be looked at, not changed (volume, the key box, the theme and the vehicle's screen can)
+        if (k === 'lang') { this.s.lang = langOf(v); this.save(); this.applySettings(); this.renderSheet(); break; }
         if (k === 'units') this.s.units = v;
         else if (k === 'northUp') { this.s.northUp = v === '1'; this.s.view3d = v === '3d'; }
         else if (k === 'bezel') this.s.bezel = v === '1';
@@ -1869,7 +1900,20 @@
     this.root.setAttribute('data-dark', dark ? '1' : '0');
     this.applyOpacity();
   };
+  // v3.16: translate the unit into the chosen language (live); the root's data-lang picks the fonts
+  P.applyLang = function () {
+    var id = langOf(this.s.lang), self = this;
+    if (this.langApplied === id) return; // (called from applySettings: restore, reset and the dash copy pick it up)
+    this.langApplied = id;
+    this.root.setAttribute('data-lang', id);
+    LANG_CLOCK24 = id === 'de' || id === 'ru';
+    LANG_LOCALE = LOCALES[id];
+    if (this.home && this.el) this.renderHome();
+    if (id === 'en' && !window.TXLi18n) return;
+    loadI18n(function () { if (!self.destroyed) window.TXLi18n.setLang(self.root, id); });
+  };
   P.applySettings = function () {
+    this.applyLang();
     var r = this.root;
     var md = modeOf(this.s.mode);
     r.setAttribute('data-mode', md.id);
@@ -1950,7 +1994,7 @@
     chaseDist: { k: 'TO RACE VEH', f: function (a) { var c = a.h.chase; if (!c || c.dist == null) return null; var d = fmtDist(c.dist, a.u); return [d.v, d.u]; } },
     chaseGap: { k: 'RACE VEH GAP', f: function (a) { var c = a.h.chase; if (!c || c.gap == null) return null; var d = fmtDist(c.gap, a.u); return [(c.gap > 0 ? '+' : '') + d.v, d.u]; } },
     chaseSpeed: { k: 'RACE VEH SPEED', f: function (a) { var c = a.h.chase; if (!c || c.speed == null) return null; var s = fmtSpeed(c.speed, a.u); return [s.v, s.u]; } },
-    time: { k: 'TIME', f: function (a) { var t = clockText(a.tod).split(' '); return [t[0], t[1]]; } },
+    time: { k: 'TIME', f: function (a) { var t = clockText(a.tod).split(' '); return [t[0], t[1] || '']; } },
     // v3.7 (from time-attack and trip apps): the live gap to your best run, the time left to the finish at your recent
     // average speed, and the cornering / braking load
     gapBest: { k: 'GAP TO BEST', f: function (a) { var r = a.h.race; if (!r || r.state !== 'running' || typeof r.delta !== 'number') return null; return [(r.delta > 0 ? '+' : r.delta < 0 ? '\u2212' : '') + Math.abs(r.delta).toFixed(2), 's']; } },
@@ -2026,7 +2070,7 @@
     var cp = !!this.course;
     this.setHtml('chasebtn', this.el.chaseBtn, cp ? '<b class="cp">CO-PILOT<br>MODE</b>' : G.chase + '<span>CHASE</span>');
     this.el.chaseBtn.classList.toggle('copilot', cp);
-    this.el.chaseBtn.title = cp ? 'Co-Pilot Mode (chase map)' : 'Chase map';
+    setTip(this.el.chaseBtn, cp ? 'Co-Pilot Mode (chase map)' : 'Chase map');
     // REC / STOP button on the main screen
     var recHtml;
     if (this.rec.active) {
@@ -2634,8 +2678,9 @@
   function head(title) {
     return '<div class="txl-sheethead"><h2>' + esc(title) + '</h2><button class="txl-x" data-act="close" title="Close">' + G.close + '</button></div>';
   }
-  function seg(k, cur, opts) {
-    return '<div class="txl-seg">' + opts.map(function (o) {
+  function seg(k, cur, opts, cls) {
+    var cols = cls === 'two' ? ' style="grid-template-columns: repeat(' + Math.ceil(opts.length / 2) + ', auto)"' : ''; // two rows, read left to right
+    return '<div class="txl-seg' + (cls ? ' ' + cls : '') + '"' + cols + '>' + opts.map(function (o) {
       return '<button class="' + (String(cur) === String(o[0]) ? 'on' : '') + '" data-act="set" data-k="' + k + '" data-v="' + esc(o[0]) + '">' + esc(o[1]) + '</button>';
     }).join('') + '</div>';
   }
@@ -2953,7 +2998,8 @@
         ? (mi.level || '') + ' \u00b7 ' + (mi.roads ? mi.roads + ' roads' : 'no roads yet') + ' \u00b7 ' + (mi.tiles ? mi.tiles + ' terrain image' + (mi.tiles > 1 ? 's' : '') : 'no terrain image')
         : 'Waiting \u00b7 ' + (this.mapReason || 'asking the game for the road network');
       var about = 'Leshii413 | Baja75 Series';
-      body = '<div class="txl-sec"><h3>Units &amp; map</h3>' +
+      body = this.langHtml() +
+        '<div class="txl-sec"><h3>Units &amp; map</h3>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Units</div></div>' + seg('units', u, [['imperial', 'MI / MPH'], ['metric', 'KM / KM/H']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Map orientation</div></div>' + seg('northUp', this.s.view3d ? '3d' : this.s.northUp ? 1 : 0, [[0, 'TRACK UP'], [1, 'NORTH UP'], ['3d', '3D']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Auto zoom</div><div class="t2">Zooms out with speed</div></div>' + seg('autoZoom', this.s.autoZoom ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
@@ -3043,8 +3089,8 @@
         '<div class="txl-row"><div class="grow"><div class="t1">Colour</div></div><div class="txl-swatches">' + COURSE_COLORS.map(function (c) { return '<button class="txl-swatch' + (self.s.courseColor === c ? ' on' : '') + '" style="background:' + c + '" data-act="set" data-k="courseColor" data-v="' + c + '"></button>'; }).join('') + '</div></div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Highlight sharp turns</div><div class="t2">Yellow / orange / red by how tight the turn is</div></div>' + seg('sharpTurns', this.s.sharpTurns ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div></div>' +
         '<div class="txl-sec"><h3>Screen</h3>' +
-        (THEMES.length > 1 && !ONYX ? '<div class="txl-row"><div class="grow"><div class="t1">Theme</div></div>' +
-          seg('themeNext', this.s.themeNext || this.theme().id, THEMES.map(function (t) { return [t.id, t.name.toUpperCase()]; })) + '</div>' +
+        (THEMES.length > 1 && !ONYX ? '<div class="txl-row txl-rowtheme"><div class="grow"><div class="t1">Theme</div></div>' +
+          seg('themeNext', this.s.themeNext || this.theme().id, THEMES.map(function (t) { return [t.id, t.name.toUpperCase()]; }), THEMES.length > 4 ? 'two' : '') + '</div>' +
           '<div class="txl-note txl-themenote">' + (this.s.themeNext && this.s.themeNext !== this.theme().id ? '<b class="txl-themewait">' + esc(themeOf(this.s.themeNext).name) + ' is set: press the power button to restart the unit and apply it.</b>' : 'The case, colours and home screen. A new theme goes on when the unit restarts (power button).') + '</div>' : '') +
         '<div class="txl-row"><div class="grow"><div class="t1">On the vehicle\u2019s screen</div><div class="t2">Shows the unit on the vehicle\u2019s own navigation screen (cars that have one). Click the dash or press <i>Pop up</i> (Options \u203a Controls) to open it here</div></div>' + seg('dash', this.s.dash ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
         '<div class="txl-row"><div class="grow"><div class="t1">Device bezel</div><div class="t2">Off = screen only, for small HUD space</div></div>' + seg('bezel', this.s.bezel ? 1 : 0, [[1, 'ON'], [0, 'OFF']]) + '</div>' +
@@ -3693,7 +3739,7 @@
     m.swap.style.display = scr.length > 1 ? '' : 'none';
     m.split.textContent = this.splitOn() ? 'FULL' : 'SPLIT';
     m.split.style.display = capsOf(this.s.mode).split ? '' : 'none';
-    if (m.vfull) { m.vfull.innerHTML = this.vfull ? G.shrink : G.expand; m.vfull.title = this.vfull ? 'Leave full screen' : (this.splitOn() ? 'Full screen (split side)' : 'Full screen'); }
+    if (m.vfull) { m.vfull.innerHTML = this.vfull ? G.shrink : G.expand; setTip(m.vfull, this.vfull ? 'Leave full screen' : (this.splitOn() ? 'Full screen (split side)' : 'Full screen')); }
     if (m.vsplit) { m.vsplit.style.display = this.vfull && capsOf(this.s.mode).split ? '' : 'none'; m.vsplit.classList.toggle('on', this.splitOn()); }
     if (pk === 'video') this.renderVideoList(); else if (pk === 'music') this.renderMusicList(); else this.renderGauges(true);
     this.mediaTick(true);
@@ -3727,12 +3773,12 @@
     if (!b) return;
     var one = MODES.length < 2 && !ONYX;
     b.classList.toggle('fixed', one);
-    if (ONYX) { b.title = 'Home'; var hs = b.querySelector('span'); if (hs && hs.textContent !== 'HOME') hs.textContent = 'HOME'; return; }
+    if (ONYX) { setTip(b, 'Home'); var hs = b.querySelector('span'); if (hs && hs.__txt !== 'HOME') { hs.textContent = 'HOME'; hs.__txt = 'HOME'; } return; }
     var hb = this.root.querySelector('.txl-hwb[data-v="3"]'); // v3.1.9: HOME on every other edition
-    if (hb && !hb.classList.contains('home')) { hb.classList.remove('off'); hb.classList.add('home'); hb.title = 'Home'; hb.querySelector('span').innerHTML = G.house + 'HOME'; }
-    b.title = one ? EDITION_NAME : 'Mode: Chase / Adventure / Rally / Track';
+    if (hb && !hb.classList.contains('home')) { hb.classList.remove('off'); hb.classList.add('home'); setTip(hb, 'Home'); hb.querySelector('span').innerHTML = G.house + 'HOME'; }
+    setTip(b, one ? EDITION_NAME : 'Mode: Chase / Adventure / Rally / Track');
     var sp = b.querySelector('span'), txt = one ? MODES[0].name : 'MODE';
-    if (sp && sp.textContent !== txt) sp.textContent = txt;
+    if (sp && sp.__txt !== txt) { sp.textContent = txt; sp.__txt = txt; }
   };
   // joined / left a Baja75 server: the features of the edition in effect
   P.editionChanged = function () {
@@ -3821,7 +3867,8 @@
     if (!this.el.home || !this.home) return;
     var h = this.hud || {}, d = new Date();
     this.el.home.querySelector('.h-clock').textContent = clockText(this.s.clockSource === 'game' && typeof h.tod === 'number' ? h.tod : null);
-    this.el.home.querySelector('.h-date').textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    var dt = this.el.home.querySelector('.h-date');
+    try { dt.textContent = d.toLocaleDateString(LANG_LOCALE, { weekday: 'long', month: 'long', day: 'numeric' }); } catch (e) { dt.textContent = d.toLocaleDateString(); }
   };
   P.homeGo = function (where) {
     var s = this.s;
@@ -4384,7 +4431,7 @@
       var lbl = b.cd ? 'PASS ' + b.cd + 's' : 'PASS';
       var tip = b.why === 'unavailable' ? 'This server has no Baja75 race alerts' : b.why === 'connecting' ? 'Connecting to the server\u2019s race alerts' : 'Ask the drivers within 100 m to let you pass';
       this.setHtml('passbtn', pb, G.pass + '<span>' + lbl + '</span>');
-      pb.title = tip;
+      setTip(pb, tip);
     }
     // the incoming request: newest first, the others wait under "+N more"
     var el = this.el.pass;
